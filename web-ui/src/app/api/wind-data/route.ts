@@ -15,12 +15,42 @@ export async function GET() {
 
   try {
     // Fetch latest wind data from NOAA AGXC1 station
+    // Try the tabular data format first, fall back to human-readable format
     console.log('Fetching data from NOAA AGXC1...');
-    const response = await fetch('https://www.ndbc.noaa.gov/data/latest_obs/agxc1.txt', {
-      headers: {
-        'User-Agent': 'Wind-Forecast-App/1.0'
+
+    let response;
+    let isTabularFormat = false;
+
+    try {
+      // Try tabular format first
+      response = await fetch('https://www.ndbc.noaa.gov/data/realtime2/AGXC1.txt', {
+        headers: {
+          'User-Agent': 'Wind-Forecast-App/1.0'
+        }
+      });
+
+      if (response.ok) {
+        const testData = await response.text();
+        // Check if it's tabular data (has multiple space-separated columns)
+        const lines = testData.trim().split('\n');
+        if (lines.length > 1 && lines[lines.length - 1].split(/\s+/).length > 10) {
+          isTabularFormat = true;
+          debugInfo.dataSource = 'tabular';
+        }
       }
-    });
+    } catch (error) {
+      console.log('Tabular format not available, trying human-readable format...');
+    }
+
+    // If tabular didn't work, use human-readable format
+    if (!isTabularFormat) {
+      response = await fetch('https://www.ndbc.noaa.gov/data/latest_obs/agxc1.txt', {
+        headers: {
+          'User-Agent': 'Wind-Forecast-App/1.0'
+        }
+      });
+      debugInfo.dataSource = 'human-readable';
+    }
 
     debugInfo.responseStatus = response.status;
     debugInfo.responseHeaders = Object.fromEntries(response.headers.entries());
@@ -43,59 +73,114 @@ export async function GET() {
     console.log('All lines:', lines);
 
     if (lines.length < 2) {
-      throw new Error(`Not enough data lines. Expected at least 2 (header + data), got ${lines.length}`);
+      throw new Error(`Not enough data lines. Expected at least 2, got ${lines.length}`);
     }
 
-    // Skip header lines and get the latest data
-    const dataLine = lines[lines.length - 1];
-    debugInfo.dataLine = dataLine;
+    let windData: WindData;
 
-    console.log('Data line:', dataLine);
+    if (isTabularFormat) {
+      // Parse tabular format (NOAA realtime data)
+      console.log('Parsing tabular NOAA format...');
 
-    const parts = dataLine.split(/\s+/);
-    debugInfo.partsCount = parts.length;
-    debugInfo.allParts = parts;
+      // Skip header lines and get the latest data
+      const dataLine = lines[lines.length - 1];
+      const parts = dataLine.split(/\s+/);
 
-    console.log(`Parts count: ${parts.length}`, parts);
+      debugInfo.dataLine = dataLine;
+      debugInfo.partsCount = parts.length;
+      debugInfo.allParts = parts;
 
-    if (parts.length < 15) {
-      throw new Error(`Invalid data format. Expected at least 15 columns, got ${parts.length}. Data line: "${dataLine}". Parts: [${parts.join(', ')}]`);
-    }
+      if (parts.length < 13) {
+        throw new Error(`Invalid tabular data format. Expected at least 13 columns, got ${parts.length}`);
+      }
 
-    // Parse the wind data according to NOAA format
-    // Format: YYYY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS TIDE
-    console.log('Parsing wind data...');
+      // Format: YYYY MM DD hh mm WDIR WSPD GST WVHT DPD APD MWD PRES ATMP WTMP DEWP VIS TIDE
+      windData = {
+        datetime: `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`,
+        windDirection: parseFloat(parts[5]) || 0,
+        windSpeed: Math.round(parseFloat(parts[6]) * 1.944 * 10) / 10 || 0, // m/s to knots
+        gustSpeed: Math.round(parseFloat(parts[7]) * 1.944 * 10) / 10 || 0,  // m/s to knots
+        pressure: parseFloat(parts[12]) || 0,
+        airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
+        waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
+      };
 
-    const windData: WindData = {
-      datetime: `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`,
-      windDirection: parseFloat(parts[5]) || 0,
-      windSpeed: parseFloat(parts[6]) || 0,
-      gustSpeed: parseFloat(parts[7]) || 0,
-      pressure: parseFloat(parts[12]) || 0,
-      airTemp: parseFloat(parts[13]) || 0,
-      waterTemp: parseFloat(parts[14]) || 0
-    };
+      // Handle invalid/missing data (NOAA uses 99.0 or MM for missing data)
+      if (windData.windDirection === 99 || windData.windDirection >= 999) windData.windDirection = 0;
+      if (windData.windSpeed >= 99) windData.windSpeed = 0;
+      if (windData.gustSpeed >= 99) windData.gustSpeed = 0;
+      if (windData.pressure >= 9999) windData.pressure = 0;
+      if (windData.airTemp >= 999) windData.airTemp = 0;
+      if (windData.waterTemp >= 999) windData.waterTemp = 0;
 
-    debugInfo.parsedData = { ...windData };
+    } else {
+      // Parse human-readable format
+      console.log('Parsing human-readable NOAA format...');
 
-    // Handle invalid/missing data (NOAA uses 99.0 or MM for missing data)
-    if (windData.windDirection === 99 || isNaN(windData.windDirection)) windData.windDirection = 0;
-    if (windData.windSpeed >= 99 || isNaN(windData.windSpeed)) windData.windSpeed = 0;
-    if (windData.gustSpeed >= 99 || isNaN(windData.gustSpeed)) windData.gustSpeed = 0;
-    if (windData.pressure >= 999 || isNaN(windData.pressure)) windData.pressure = 0;
-    if (windData.airTemp >= 99 || isNaN(windData.airTemp)) windData.airTemp = 0;
-    if (windData.waterTemp >= 99 || isNaN(windData.waterTemp)) windData.waterTemp = 0;
+      let windDirection = 0;
+      let windSpeed = 0;
+      let gustSpeed = 0;
+      let dateTime = '';
 
-    // Convert wind speed from m/s to knots (1 m/s = 1.944 knots)
-    windData.windSpeed = Math.round(windData.windSpeed * 1.944 * 10) / 10;
-    windData.gustSpeed = Math.round(windData.gustSpeed * 1.944 * 10) / 10;
+      // Extract date/time from lines like "2348 GMT 11/16/25"
+      const gmtLine = lines.find(line => line.includes('GMT'));
+      if (gmtLine) {
+        const gmtMatch = gmtLine.match(/(\d{4})\s+GMT\s+(\d{1,2})\/(\d{1,2})\/(\d{2})/);
+        if (gmtMatch) {
+          const [, time, month, day, year] = gmtMatch;
+          const hours = time.substring(0, 2);
+          const minutes = time.substring(2, 4);
+          const fullYear = `20${year}`;
+          dateTime = `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00Z`;
+        }
+      }
 
-    // Convert air and water temp from Celsius to Fahrenheit (if valid)
-    if (windData.airTemp > 0) {
-      windData.airTemp = Math.round((windData.airTemp * 9/5 + 32) * 10) / 10;
-    }
-    if (windData.waterTemp > 0) {
-      windData.waterTemp = Math.round((windData.waterTemp * 9/5 + 32) * 10) / 10;
+      // Extract wind data from lines like "Wind: S (180°), 8.0 kt"
+      const windLine = lines.find(line => line.includes('Wind:'));
+      if (windLine) {
+        // Parse wind direction from "(180°)"
+        const dirMatch = windLine.match(/\((\d+)°?\)/);
+        if (dirMatch) {
+          windDirection = parseInt(dirMatch[1]);
+        }
+
+        // Parse wind speed from "8.0 kt"
+        const speedMatch = windLine.match(/,\s*([\d.]+)\s*kt/);
+        if (speedMatch) {
+          windSpeed = parseFloat(speedMatch[1]);
+        }
+      }
+
+      // Extract gust data from lines like "Gust: 14.0 kt"
+      const gustLine = lines.find(line => line.includes('Gust:'));
+      if (gustLine) {
+        const gustMatch = gustLine.match(/Gust:\s*([\d.]+)\s*kt/);
+        if (gustMatch) {
+          gustSpeed = parseFloat(gustMatch[1]);
+        }
+      }
+
+      debugInfo.extractedData = {
+        windDirection,
+        windSpeed,
+        gustSpeed,
+        dateTime
+      };
+
+      if (!dateTime) {
+        throw new Error('Could not parse date/time from NOAA data');
+      }
+
+      // Wind speeds are already in knots for human-readable format
+      windData = {
+        datetime: dateTime,
+        windDirection,
+        windSpeed,
+        gustSpeed,
+        pressure: 0, // Not available in this format
+        airTemp: 0,  // Not available in this format
+        waterTemp: 0 // Not available in this format
+      };
     }
 
     debugInfo.finalData = windData;

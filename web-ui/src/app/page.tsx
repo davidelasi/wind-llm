@@ -184,31 +184,37 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Environmental Data */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Environmental</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-sm text-gray-600 mb-1">Air Temp</div>
-              <div className="text-lg font-bold text-gray-800">
-                {windData.airTemp.toFixed(1)}°F
+        {/* Environmental Data - Only show if available */}
+        {(windData.airTemp > 0 || windData.waterTemp > 0 || windData.pressure > 0) && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Environmental</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">Air Temp</div>
+                <div className="text-lg font-bold text-gray-800">
+                  {windData.airTemp > 0 ? `${windData.airTemp.toFixed(1)}°F` : 'N/A'}
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600 mb-1">Water Temp</div>
-              <div className="text-lg font-bold text-gray-800">
-                {windData.waterTemp.toFixed(1)}°F
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">Water Temp</div>
+                <div className="text-lg font-bold text-gray-800">
+                  {windData.waterTemp > 0 ? `${windData.waterTemp.toFixed(1)}°F` : 'N/A'}
+                </div>
               </div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600 mb-1">Pressure</div>
-              <div className="text-lg font-bold text-gray-800">
-                {windData.pressure.toFixed(0)}
-                <span className="text-xs text-gray-600 ml-1">mb</span>
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">Pressure</div>
+                <div className="text-lg font-bold text-gray-800">
+                  {windData.pressure > 0 ? (
+                    <>
+                      {windData.pressure.toFixed(0)}
+                      <span className="text-xs text-gray-600 ml-1">mb</span>
+                    </>
+                  ) : 'N/A'}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Refresh Button */}
         <div className="text-center">

@@ -18,7 +18,7 @@ export async function GET() {
     // Try the tabular data format first, fall back to human-readable format
     console.log('Fetching data from NOAA AGXC1...');
 
-    let response: Response;
+    let response: Response | null = null;
     let isTabularFormat = false;
     let rawData: string;
 
@@ -59,6 +59,11 @@ export async function GET() {
       }
 
       rawData = await response.text();
+    }
+
+    // Ensure response is not null (TypeScript safety)
+    if (!response) {
+      throw new Error('Failed to fetch data from any source');
     }
 
     debugInfo.responseStatus = response.status;

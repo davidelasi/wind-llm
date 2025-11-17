@@ -20,13 +20,16 @@ interface ApiResponse {
   lastUpdated?: string;
   error?: string;
   message?: string;
+  debug?: any;
 }
 
 export default function Home() {
   const [windData, setWindData] = useState<WindData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [showDebug, setShowDebug] = useState(false);
 
   const fetchWindData = async () => {
     try {
@@ -34,15 +37,20 @@ export default function Home() {
       const response = await fetch('/api/wind-data');
       const data: ApiResponse = await response.json();
 
+      // Always capture debug info if available
+      setDebugInfo(data.debug || null);
+
       if (data.success && data.data) {
         setWindData(data.data);
         setLastUpdate(new Date().toLocaleTimeString());
         setError(null);
       } else {
         setError(data.message || 'Failed to fetch wind data');
+        console.error('API Error:', data);
       }
     } catch (err) {
       setError('Network error');
+      console.error('Fetch Error:', err);
     } finally {
       setLoading(false);
     }
@@ -82,16 +90,46 @@ export default function Home() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center px-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 text-center max-w-sm w-full">
+        <div className="bg-white rounded-lg shadow-lg p-6 text-center max-w-lg w-full">
           <div className="text-red-500 text-4xl mb-4">⚠️</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchWindData}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retry
-          </button>
+
+          {debugInfo && (
+            <div className="mb-4">
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-sm text-blue-600 hover:text-blue-800 underline mb-2"
+              >
+                {showDebug ? 'Hide' : 'Show'} Debug Info
+              </button>
+
+              {showDebug && (
+                <div className="bg-gray-100 p-4 rounded-lg text-left text-xs overflow-auto max-h-64">
+                  <h4 className="font-bold mb-2">Debug Information:</h4>
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={fetchWindData}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+
+            <button
+              onClick={() => window.open('/api/wind-data', '_blank')}
+              className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Test API Directly
+            </button>
+          </div>
         </div>
       </div>
     );

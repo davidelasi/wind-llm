@@ -47,6 +47,14 @@ export async function GET() {
     console.log('NOAA API response received');
     console.log('Properties keys:', debugInfo.propertiesKeys);
 
+    // Debug wind unit codes
+    if (jsonData.properties) {
+      debugInfo.windSpeedUnit = jsonData.properties.windSpeed?.unitCode;
+      debugInfo.windGustUnit = jsonData.properties.windGust?.unitCode;
+      console.log('Wind speed unit code:', debugInfo.windSpeedUnit);
+      console.log('Wind gust unit code:', debugInfo.windGustUnit);
+    }
+
     if (!jsonData.properties) {
       throw new Error('No properties object found in API response');
     }
@@ -154,10 +162,10 @@ function extractWindData(properties: any): NoaaWindData {
 }
 
 function parseUnitCode(unitCode: string): string {
-  // NOAA uses unit codes like "wmoUnit:kmPh", "wmoUnit:m_s-1", etc.
+  // NOAA uses unit codes like "wmoUnit:km_h-1", "wmoUnit:m_s-1", etc.
   if (unitCode.includes('m_s-1') || unitCode.includes('m/s')) {
     return 'm/s';
-  } else if (unitCode.includes('kmPh') || unitCode.includes('km/h')) {
+  } else if (unitCode.includes('km_h-1') || unitCode.includes('kmPh') || unitCode.includes('km/h')) {
     return 'km/h';
   } else if (unitCode.includes('mph')) {
     return 'mph';

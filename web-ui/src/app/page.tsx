@@ -12,7 +12,7 @@ interface WindData {
   waterTemp: number;
 }
 
-interface ApiResponse {
+interface WindApiResponse {
   success: boolean;
   data?: WindData;
   station?: string;
@@ -23,19 +23,41 @@ interface ApiResponse {
   debug?: any;
 }
 
+interface ProcessedForecast {
+  processed: string;
+  original: string;
+  issuedTime: string;
+  warnings: string[];
+}
+
+interface ForecastApiResponse {
+  success: boolean;
+  data?: ProcessedForecast;
+  error?: string;
+  message?: string;
+  debug?: any;
+}
+
 export default function Home() {
   const [windData, setWindData] = useState<WindData | null>(null);
+  const [forecastData, setForecastData] = useState<ProcessedForecast | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forecastLoading, setForecastLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [forecastError, setForecastError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [forecastDebugInfo, setForecastDebugInfo] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState<string>('');
+  const [lastForecastUpdate, setLastForecastUpdate] = useState<string>('');
   const [showDebug, setShowDebug] = useState(false);
+  const [showForecastDebug, setShowForecastDebug] = useState(false);
+  const [showOriginalForecast, setShowOriginalForecast] = useState(false);
 
   const fetchWindData = async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/wind-data');
-      const data: ApiResponse = await response.json();
+      const data: WindApiResponse = await response.json();
 
       // Always capture debug info if available
       setDebugInfo(data.debug || null);
@@ -56,10 +78,44 @@ export default function Home() {
     }
   };
 
+  const fetchForecastData = async () => {
+    try {
+      setForecastLoading(true);
+      const response = await fetch('/api/area-forecast');
+      const data: ForecastApiResponse = await response.json();
+
+      // Always capture debug info if available
+      setForecastDebugInfo(data.debug || null);
+
+      if (data.success && data.data) {
+        setForecastData(data.data);
+        setLastForecastUpdate(new Date().toLocaleTimeString());
+        setForecastError(null);
+      } else {
+        setForecastError(data.message || 'Failed to fetch forecast data');
+        console.error('Forecast API Error:', data);
+      }
+    } catch (err) {
+      setForecastError('Network error');
+      console.error('Forecast Fetch Error:', err);
+    } finally {
+      setForecastLoading(false);
+    }
+  };
+
   useEffect(() => {
+    // Fetch both wind data and forecast on initial load
     fetchWindData();
-    const interval = setInterval(fetchWindData, 5 * 60 * 1000); // Refresh every 5 minutes
-    return () => clearInterval(interval);
+    fetchForecastData();
+
+    // Set up different refresh intervals
+    const windInterval = setInterval(fetchWindData, 5 * 60 * 1000); // Refresh every 5 minutes
+    const forecastInterval = setInterval(fetchForecastData, 60 * 60 * 1000); // Refresh every 1 hour
+
+    return () => {
+      clearInterval(windInterval);
+      clearInterval(forecastInterval);
+    };
   }, []);
 
   const getWindDirectionText = (degrees: number) => {
@@ -232,6 +288,107 @@ export default function Home() {
           <p className="text-xs text-gray-500">
             Station reading: {new Date(windData.datetime).toLocaleString()}
           </p>
+        </div>
+
+        {/* Area Forecast Section */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Area Forecast - Inner Waters</h3>
+            <button
+              onClick={fetchForecastData}
+              disabled={forecastLoading}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {forecastLoading ? 'Loading...' : 'Refresh Forecast'}
+            </button>
+          </div>
+
+          {forecastError ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-red-700 font-medium mb-2">Forecast Error</div>
+              <p className="text-red-600 text-sm mb-3">{forecastError}</p>
+
+              {forecastDebugInfo && (
+                <div className="mb-3">
+                  <button
+                    onClick={() => setShowForecastDebug(!showForecastDebug)}
+                    className="text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    {showForecastDebug ? 'Hide' : 'Show'} Debug Info
+                  </button>
+
+                  {showForecastDebug && (
+                    <div className="bg-gray-100 p-3 rounded mt-2 text-xs overflow-auto max-h-48">
+                      <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(forecastDebugInfo, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() => window.open('/api/area-forecast', '_blank')}
+                className="bg-red-600 text-white px-4 py-2 rounded text-xs hover:bg-red-700"
+              >
+                Test Forecast API
+              </button>
+            </div>
+          ) : forecastLoading && !forecastData ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+              <p className="text-gray-600 mt-3">Loading forecast...</p>
+            </div>
+          ) : forecastData ? (
+            <div>
+              {/* Warnings */}
+              {forecastData.warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-amber-800 mb-2">⚠️ Weather Warnings</h4>
+                  <ul className="text-sm text-amber-700">
+                    {forecastData.warnings.map((warning, index) => (
+                      <li key={index} className="mb-1">• {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Processed Forecast */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold text-gray-800 mb-3">Processed Forecast</h4>
+                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                  {forecastData.processed}
+                </pre>
+              </div>
+
+              {/* Original Forecast Toggle */}
+              <div className="text-center mb-4">
+                <button
+                  onClick={() => setShowOriginalForecast(!showOriginalForecast)}
+                  className="text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  {showOriginalForecast ? 'Hide' : 'Show'} Original Forecast
+                </button>
+              </div>
+
+              {showOriginalForecast && (
+                <div className="bg-gray-100 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-gray-800 mb-3">Original Forecast</h4>
+                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
+                    {forecastData.original}
+                  </pre>
+                </div>
+              )}
+
+              {/* Forecast Timestamp */}
+              <div className="text-center">
+                <p className="text-xs text-gray-500">
+                  Forecast issued: {new Date(forecastData.issuedTime).toLocaleString()} •
+                  Last updated: {lastForecastUpdate}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

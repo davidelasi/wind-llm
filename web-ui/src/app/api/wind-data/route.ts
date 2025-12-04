@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 
 interface WindData {
   datetime: string;
@@ -34,25 +35,38 @@ export async function GET() {
         const testData = await tabularResponse.text();
         // Check if it's tabular data (has multiple space-separated columns)
         const lines = testData.trim().split('\n');
-        if (lines.length > 1 && lines[lines.length - 1].split(/\s+/).length > 10) {
-          isTabularFormat = true;
-          response = tabularResponse;
-          rawData = testData;
-          debugInfo.dataSource = 'tabular';
+        const lastLine = lines[lines.length - 1];
+
+        if (lines.length > 1 && lastLine.split(/\s+/).length > 10) {
+          // Check if the tabular data is recent (within last 7 days)
+          const parts = lastLine.split(/\s+/);
+          const dataDate = new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`);
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+          if (dataDate > sevenDaysAgo) {
+            isTabularFormat = true;
+            response = tabularResponse;
+            rawData = testData;
+            debugInfo.dataSource = 'tabular';
+            debugInfo.tabularDataAge = `${Math.round((Date.now() - dataDate.getTime()) / (1000 * 60 * 60))} hours old`;
+          } else {
+            console.log(`Tabular data is too old (${dataDate.toISOString()}), falling back to human-readable format...`);
+            debugInfo.tabularDataAge = `${Math.round((Date.now() - dataDate.getTime()) / (1000 * 60 * 60 * 24))} days old - rejected`;
+          }
         }
       }
     } catch (error) {
       console.log('Tabular format not available, trying human-readable format...');
     }
 
-    // If tabular didn't work, use human-readable format
+    // If tabular didn't work, use 5-day data format as fallback
     if (!isTabularFormat) {
-      response = await fetch('https://www.ndbc.noaa.gov/data/latest_obs/agxc1.txt', {
+      response = await fetch('https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt', {
         headers: {
           'User-Agent': 'Wind-Forecast-App/1.0'
         }
       });
-      debugInfo.dataSource = 'human-readable';
+      debugInfo.dataSource = 'five-day-fallback';
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -112,8 +126,8 @@ export async function GET() {
       windData = {
         datetime: `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`,
         windDirection: parseFloat(parts[5]) || 0,
-        windSpeed: Math.round(parseFloat(parts[6]) * 1.944 * 10) / 10 || 0, // m/s to knots
-        gustSpeed: Math.round(parseFloat(parts[7]) * 1.944 * 10) / 10 || 0,  // m/s to knots
+        windSpeed: Math.round(parseFloat(parts[6]) * 1.94384 * 10) / 10 || 0, // m/s to knots
+        gustSpeed: Math.round(parseFloat(parts[7]) * 1.94384 * 10) / 10 || 0,  // m/s to knots
         pressure: parseFloat(parts[12]) || 0,
         airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
         waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
@@ -128,82 +142,154 @@ export async function GET() {
       if (windData.waterTemp >= 999) windData.waterTemp = 0;
 
     } else {
-      // Parse human-readable format
-      console.log('Parsing human-readable NOAA format...');
+      // Parse alternative formats (5-day or human-readable)
+      console.log(`Parsing NOAA format (${debugInfo.dataSource})...`);
 
-      let windDirection = 0;
-      let windSpeed = 0;
-      let gustSpeed = 0;
-      let dateTime = '';
+      // Check if this is 5-day format (has tabular structure)
+      if (debugInfo.dataSource === 'five-day-fallback') {
+        // Parse the 5-day format - get the most recent measurement
+        const dataLines = lines.slice(2); // Skip header lines
+        const latestLine = dataLines[0]; // First data line has the most recent data
 
-      // Extract date/time from lines like "2348 GMT 11/16/25"
-      const gmtLine = lines.find(line => line.includes('GMT'));
-      if (gmtLine) {
-        const gmtMatch = gmtLine.match(/(\d{4})\s+GMT\s+(\d{1,2})\/(\d{1,2})\/(\d{2})/);
-        if (gmtMatch) {
-          const [, time, month, day, year] = gmtMatch;
-          const hours = time.substring(0, 2);
-          const minutes = time.substring(2, 4);
-          const fullYear = `20${year}`;
-          dateTime = `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00Z`;
+        if (latestLine && latestLine.split(/\s+/).length >= 8) {
+          const parts = latestLine.split(/\s+/);
+
+          // Convert GMT to current time for display
+          const year = parseInt(parts[0]);
+          const month = parseInt(parts[1]);
+          const day = parseInt(parts[2]);
+          const hour = parseInt(parts[3]);
+          const minute = parseInt(parts[4]);
+
+          windData = {
+            datetime: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`,
+            windDirection: parseFloat(parts[5]) || 0,
+            windSpeed: Math.round(parseFloat(parts[6]) * 1.94384 * 10) / 10 || 0, // m/s to knots
+            gustSpeed: Math.round(parseFloat(parts[7]) * 1.94384 * 10) / 10 || 0,  // m/s to knots
+            pressure: parseFloat(parts[12]) || 0,
+            airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
+            waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
+          };
+
+          // Handle invalid/missing data
+          if (windData.windDirection === 99 || windData.windDirection >= 999) windData.windDirection = 0;
+          if (windData.windSpeed >= 99) windData.windSpeed = 0;
+          if (windData.gustSpeed >= 99) windData.gustSpeed = 0;
+          if (windData.pressure >= 9999) windData.pressure = 0;
+          if (windData.airTemp >= 999) windData.airTemp = 0;
+          if (windData.waterTemp >= 999) windData.waterTemp = 0;
+
+          debugInfo.fiveDayParsed = true;
+        } else {
+          throw new Error('Could not parse 5-day format data');
         }
-      }
+      } else {
+        // Parse human-readable format
+        console.log('Parsing human-readable NOAA format...');
 
-      // Extract wind data from lines like "Wind: S (180°), 8.0 kt"
-      const windLine = lines.find(line => line.includes('Wind:'));
-      if (windLine) {
-        // Parse wind direction from "(180°)"
-        const dirMatch = windLine.match(/\((\d+)°?\)/);
-        if (dirMatch) {
-          windDirection = parseInt(dirMatch[1]);
+        let windDirection = 0;
+        let windSpeed = 0;
+        let gustSpeed = 0;
+        let dateTime = '';
+
+        // Extract date/time from lines like "2348 GMT 11/16/25"
+        const gmtLine = lines.find(line => line.includes('GMT'));
+        if (gmtLine) {
+          const gmtMatch = gmtLine.match(/(\d{4})\s+GMT\s+(\d{1,2})\/(\d{1,2})\/(\d{2})/);
+          if (gmtMatch) {
+            const [, time, month, day, year] = gmtMatch;
+            const hours = time.substring(0, 2);
+            const minutes = time.substring(2, 4);
+            const fullYear = `20${year}`;
+            dateTime = `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:00Z`;
+          }
         }
 
-        // Parse wind speed from "8.0 kt"
-        const speedMatch = windLine.match(/,\s*([\d.]+)\s*kt/);
-        if (speedMatch) {
-          windSpeed = parseFloat(speedMatch[1]);
+        // Extract wind data from lines like "Wind: S (180°), 8.0 kt"
+        const windLine = lines.find(line => line.includes('Wind:'));
+        if (windLine) {
+          // Parse wind direction from "(180°)" - handle various encodings of degree symbol
+          const dirMatch = windLine.match(/\((\d+)[°\ufffd]?\)/);
+          if (dirMatch) {
+            windDirection = parseInt(dirMatch[1]);
+          }
+
+          // Parse wind speed from "8.0 kt"
+          const speedMatch = windLine.match(/,\s*([\d.]+)\s*kt/);
+          if (speedMatch) {
+            windSpeed = parseFloat(speedMatch[1]);
+          }
         }
-      }
 
-      // Extract gust data from lines like "Gust: 14.0 kt"
-      const gustLine = lines.find(line => line.includes('Gust:'));
-      if (gustLine) {
-        const gustMatch = gustLine.match(/Gust:\s*([\d.]+)\s*kt/);
-        if (gustMatch) {
-          gustSpeed = parseFloat(gustMatch[1]);
+        // Extract gust data from lines like "Gust: 14.0 kt"
+        const gustLine = lines.find(line => line.includes('Gust:'));
+        if (gustLine) {
+          const gustMatch = gustLine.match(/Gust:\s*([\d.]+)\s*kt/);
+          if (gustMatch) {
+            gustSpeed = parseFloat(gustMatch[1]);
+          }
         }
+
+        debugInfo.extractedData = {
+          windDirection,
+          windSpeed,
+          gustSpeed,
+          dateTime
+        };
+
+        if (!dateTime) {
+          throw new Error('Could not parse date/time from NOAA data');
+        }
+
+        // Wind speeds are already in knots for human-readable format
+        windData = {
+          datetime: dateTime,
+          windDirection,
+          windSpeed,
+          gustSpeed,
+          pressure: 0, // Not available in this format
+          airTemp: 0,  // Not available in this format
+          waterTemp: 0 // Not available in this format
+        };
       }
-
-      debugInfo.extractedData = {
-        windDirection,
-        windSpeed,
-        gustSpeed,
-        dateTime
-      };
-
-      if (!dateTime) {
-        throw new Error('Could not parse date/time from NOAA data');
-      }
-
-      // Wind speeds are already in knots for human-readable format
-      windData = {
-        datetime: dateTime,
-        windDirection,
-        windSpeed,
-        gustSpeed,
-        pressure: 0, // Not available in this format
-        airTemp: 0,  // Not available in this format
-        waterTemp: 0 // Not available in this format
-      };
     }
 
     debugInfo.finalData = windData;
 
     console.log('Successfully processed wind data:', windData);
 
+    // Calculate data age and convert timestamp to PST
+    const dataTimestamp = new Date(windData.datetime);
+    const nowPST = new Date();
+    const dataAgeMins = Math.floor((nowPST.getTime() - dataTimestamp.getTime()) / (1000 * 60));
+
+    // Convert to PST for display
+    const dataPST = new Date(dataTimestamp.getTime() - (8 * 60 * 60 * 1000)); // Convert to PST (UTC-8)
+    const formattedTimePST = dataPST.toLocaleString('en-US', {
+      timeZone: PACIFIC_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) + ' PST';
+
+    // Create warning for old data (>12 minutes)
+    const dataAge = {
+      minutes: dataAgeMins,
+      isOld: dataAgeMins > 12,
+      warning: dataAgeMins > 12 ? `WARNING: Latest station reading ${dataAgeMins} min ago` : null,
+      timestamp: formattedTimePST
+    };
+
     return NextResponse.json({
       success: true,
-      data: windData,
+      data: {
+        ...windData,
+        datetime: formattedTimePST
+      },
+      dataAge,
       station: 'AGXC1',
       location: 'Los Angeles, CA',
       lastUpdated: new Date().toISOString(),

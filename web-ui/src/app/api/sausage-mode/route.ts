@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 
 // Re-use types and functions from llm-forecast
 interface TrainingExample {
@@ -366,7 +367,7 @@ export async function GET(request: NextRequest) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2500,
       currentTime: new Date().toISOString(),
-      timezone: 'America/Los_Angeles',
+      timezone: PACIFIC_TIMEZONE,
       apiKeySet: !!process.env.ANTHROPIC_API_KEY,
     };
 

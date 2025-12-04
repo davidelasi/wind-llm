@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Navigation from '../components/Navigation';
+import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 import {
   BarChart,
   Bar,
@@ -491,7 +492,7 @@ export default function Home() {
 
     // Convert to PST by getting the localized date string
     const pstDateString = today.toLocaleDateString('en-US', {
-      timeZone: 'America/Los_Angeles',
+      timeZone: PACIFIC_TIMEZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
@@ -968,7 +969,7 @@ export default function Home() {
                   <p>Looking for date: {(() => {
                     const today = new Date();
                     const pstDateString = today.toLocaleDateString('en-US', {
-                      timeZone: 'America/Los_Angeles',
+                      timeZone: PACIFIC_TIMEZONE,
                       year: 'numeric',
                       month: '2-digit',
                       day: '2-digit'

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 
 interface NoaaWindData {
   timestamp: string;
@@ -69,9 +70,38 @@ export async function GET() {
       throw new Error('No timestamp found in observation data');
     }
 
+    // Calculate data age and convert timestamp to PST
+    const dataTimestamp = new Date(windData.timestamp);
+    const nowPST = new Date();
+    const dataAgeMins = Math.floor((nowPST.getTime() - dataTimestamp.getTime()) / (1000 * 60));
+
+    // Convert to PST for display
+    const dataPST = new Date(dataTimestamp.getTime() - (8 * 60 * 60 * 1000)); // Convert to PST (UTC-8)
+    const formattedTimePST = dataPST.toLocaleString('en-US', {
+      timeZone: PACIFIC_TIMEZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) + ' PST';
+
+    // Create warning for old data (>12 minutes)
+    const dataAge = {
+      minutes: dataAgeMins,
+      isOld: dataAgeMins > 12,
+      warning: dataAgeMins > 12 ? `WARNING: Latest station reading ${dataAgeMins} min ago` : null,
+      timestamp: formattedTimePST
+    };
+
     return NextResponse.json({
       success: true,
-      data: windData,
+      data: {
+        ...windData,
+        timestamp: formattedTimePST
+      },
+      dataAge,
       station: 'AGXC1',
       location: 'Los Angeles, CA',
       debug: process.env.NODE_ENV === 'development' ? debugInfo : undefined
@@ -112,7 +142,7 @@ function extractWindData(properties: any): NoaaWindData {
 
     // Convert to knots if needed
     if (windSpeedUnit === 'm/s') {
-      windSpeed = Math.round(windSpeed * 1.944 * 10) / 10;
+      windSpeed = Math.round(windSpeed * 1.94384 * 10) / 10;
       windSpeedUnit = 'kt';
     } else if (windSpeedUnit === 'km/h') {
       windSpeed = Math.round(windSpeed * 0.539957 * 10) / 10;
@@ -140,7 +170,7 @@ function extractWindData(properties: any): NoaaWindData {
 
     // Convert to knots if needed
     if (windGustUnit === 'm/s' && windGust !== null) {
-      windGust = Math.round(windGust * 1.944 * 10) / 10;
+      windGust = Math.round(windGust * 1.94384 * 10) / 10;
       windGustUnit = 'kt';
     } else if (windGustUnit === 'km/h' && windGust !== null) {
       windGust = Math.round(windGust * 0.539957 * 10) / 10;

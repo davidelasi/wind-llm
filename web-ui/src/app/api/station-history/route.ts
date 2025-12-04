@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { format, parseISO, subDays } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
+import { convertGMTtoPacific, PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 
 interface WindDataPoint {
   timestamp: string;
@@ -50,34 +51,6 @@ function getWindDirectionText(degrees: number): string {
   return directions[index];
 }
 
-function convertGMTtoPacific(year: number, month: number, day: number, hour: number, minute: number): Date {
-  const gmtDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
-
-  // Create a temporary date in Pacific timezone to determine if DST is in effect
-  const tempLocal = new Date(gmtDate.getTime());
-  const pacificOffset = tempLocal.toLocaleString('en', {timeZone: 'America/Los_Angeles'});
-
-  // More reliable method: use Intl.DateTimeFormat to get actual Pacific time
-  const formatter = new Intl.DateTimeFormat('en', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  const parts = formatter.formatToParts(gmtDate);
-  const pacificYear = parseInt(parts.find(p => p.type === 'year')?.value || '0');
-  const pacificMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-  const pacificDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
-  const pacificHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-  const pacificMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-
-  return new Date(pacificYear, pacificMonth - 1, pacificDay, pacificHour, pacificMinute);
-}
-
 function parseWindData(text: string): WindDataPoint[] {
   const lines = text.split('\n');
   const data: WindDataPoint[] = [];
@@ -113,7 +86,7 @@ function parseWindData(text: string): WindDataPoint[] {
         const gmtDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
 
         // Format as ISO string in Pacific timezone
-        const pacificTimestamp = formatInTimeZone(gmtDate, 'America/Los_Angeles', "yyyy-MM-dd'T'HH:mm:ssXXX");
+        const pacificTimestamp = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
 
         // Get Pacific time components for display
         const pacificDate = convertGMTtoPacific(year, month, day, hour, minute);
@@ -267,7 +240,7 @@ export async function GET(request: NextRequest) {
 
     const metadata = {
       lastUpdated: new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
+        timeZone: PACIFIC_TIMEZONE,
         timeZoneName: 'short'
       }),
       station: 'AGXC1',

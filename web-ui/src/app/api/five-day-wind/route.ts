@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { convertGMTtoPacific, PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 
 interface RawWindData {
   year: number;
@@ -49,30 +50,6 @@ interface DailyWindData {
 }
 
 const MS_TO_KNOTS = 1.94384;
-
-function convertGMTtoPacific(year: number, month: number, day: number, hour: number, minute: number): Date {
-  const gmtDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
-
-  // Use Intl.DateTimeFormat to get actual Pacific time (handles DST automatically)
-  const formatter = new Intl.DateTimeFormat('en', {
-    timeZone: 'America/Los_Angeles',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  const parts = formatter.formatToParts(gmtDate);
-  const pacificYear = parseInt(parts.find(p => p.type === 'year')?.value || '0');
-  const pacificMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
-  const pacificDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
-  const pacificHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
-  const pacificMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
-
-  return new Date(pacificYear, pacificMonth - 1, pacificDay, pacificHour, pacificMinute);
-}
 
 function parseWindData(text: string): RawWindData[] {
   const lines = text.split('\n');
@@ -276,7 +253,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const dataAge = {
       lastUpdated: now.toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles',
+        timeZone: PACIFIC_TIMEZONE,
         timeZoneName: 'short'
       }),
       recordCount: rawData.length,

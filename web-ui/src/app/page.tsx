@@ -5,6 +5,9 @@ import Navigation from '../components/Navigation';
 import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { addDays } from 'date-fns';
+import { useWindData } from '@/hooks/useWindData';
+import { getWindDirectionText, getWindSpeedColor, mapToForecastWindow } from '@/lib/wind-utils';
+import type { DayData } from '@/types/wind-data';
 import {
   BarChart,
   Bar,
@@ -128,8 +131,9 @@ export default function Home() {
   const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
   const [useLlmForecast, setUseLlmForecast] = useState(true);
   const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
-  const [actualWindData, setActualWindData] = useState<any>(null);
-  const [actualWindLoading, setActualWindLoading] = useState(true);
+
+  // Use unified wind data hook
+  const { data: actualWindData, isLoading: actualWindLoading } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
 
   const fetchWindData = async () => {
     try {
@@ -243,54 +247,29 @@ export default function Home() {
     }
   };
 
-  const fetchActualWindData = async () => {
-    try {
-      setActualWindLoading(true);
-      const response = await fetch('/api/five-day-wind');
-      const data = await response.json();
-
-      if (data.success && data.data && data.data.length > 0) {
-        setActualWindData(data.data);
-      } else {
-        setActualWindData(null);
-      }
-    } catch (err) {
-      console.error('Error fetching actual wind data:', err);
-      setActualWindData(null);
-    } finally {
-      setActualWindLoading(false);
-    }
-  };
-
-
   useEffect(() => {
     // Fetch all data on initial load
     fetchWindData();
     fetchForecastData();
     fetchLlmForecast();
-    fetchActualWindData();
+    // Note: actualWindData now managed by useWindData hook
 
     // Set up different refresh intervals
     const windInterval = setInterval(fetchWindData, 5 * 60 * 1000); // Refresh every 5 minutes
     const forecastInterval = setInterval(fetchForecastData, 60 * 60 * 1000); // Refresh every 1 hour
     const llmForecastInterval = setInterval(() => fetchLlmForecast(false), 60 * 60 * 1000); // Check for new forecasts every hour
-    const actualWindInterval = setInterval(fetchActualWindData, 5 * 60 * 1000); // Refresh actual wind data every 5 minutes
+    // Note: actualWindData refresh now handled by useWindData hook
     const ageUpdateInterval = setInterval(updateDataAges, 60 * 1000); // Update ages every minute
 
     return () => {
       clearInterval(windInterval);
       clearInterval(forecastInterval);
       clearInterval(llmForecastInterval);
-      clearInterval(actualWindInterval);
       clearInterval(ageUpdateInterval);
     };
   }, [useLlmForecast]);
 
-  const getWindDirectionText = (degrees: number) => {
-    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-    const index = Math.round(degrees / 22.5) % 16;
-    return directions[index];
-  };
+  // Note: getWindDirectionText and getWindSpeedColor now imported from @/lib/wind-utils
 
   const getWindSpeedCategory = (speed: number) => {
     if (speed < 7) return { category: 'Light', color: 'text-green-600' };
@@ -298,14 +277,6 @@ export default function Home() {
     if (speed < 21) return { category: 'Fresh', color: 'text-orange-600' };
     if (speed < 28) return { category: 'Strong', color: 'text-red-600' };
     return { category: 'Gale', color: 'text-purple-600' };
-  };
-
-  const getWindSpeedColor = (speed: number) => {
-    if (speed < 7) return 'bg-green-500';
-    if (speed < 14) return 'bg-blue-500';
-    if (speed < 21) return 'bg-orange-500';
-    if (speed < 28) return 'bg-red-500';
-    return 'bg-purple-500';
   };
 
   const getWindDirectionArrow = (degrees: number) => {
@@ -478,7 +449,7 @@ export default function Home() {
 
   const currentForecastData = getCurrentForecastData();
 
-  // Get actual wind data for the selected day
+  // Get actual wind data for the selected day (using unified data structure)
   const getActualWindForDay = () => {
     if (!actualWindData || actualWindData.length === 0) {
       console.log('[DEBUG] No actual wind data available');
@@ -487,7 +458,7 @@ export default function Home() {
 
     console.log('[DEBUG] Actual wind data:', actualWindData);
     console.log('[DEBUG] Number of days in actual data:', actualWindData.length);
-    console.log('[DEBUG] Available dates:', actualWindData.map((d: any) => d.date));
+    console.log('[DEBUG] Available dates:', actualWindData.map((d: DayData) => d.date));
 
     // Calculate the date for the selected day in PST
     const now = new Date();
@@ -505,7 +476,7 @@ export default function Home() {
     console.log('[DEBUG] Target date key:', dateKey);
 
     // Find the matching day in actual wind data
-    const dayData = actualWindData.find((day: any) => day.date === dateKey);
+    const dayData = actualWindData.find((day: DayData) => day.date === dateKey);
 
     if (!dayData) {
       console.log('[DEBUG] No matching day found for date:', dateKey);
@@ -518,7 +489,7 @@ export default function Home() {
     }
 
     console.log('[DEBUG] Found day data:', dayData);
-    console.log('[DEBUG] Hours available:', dayData.hourlyData.map((h: any) => h.hour));
+    console.log('[DEBUG] Hours available:', dayData.hourlyData.map(h => h.hour));
 
     // Map hourly data to match forecast format (11 AM to 6 PM)
     const timeSlots = ['11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
@@ -529,14 +500,15 @@ export default function Home() {
 
     const result = timeSlots.map(timeSlot => {
       const hour = hourMapping[timeSlot];
-      const hourData = dayData.hourlyData.find((h: any) => parseInt(h.hour.split(':')[0]) === hour);
+      // With unified structure, hour is already a number
+      const hourData = dayData.hourlyData.find(h => h.hour === hour);
 
       if (hourData) {
         console.log(`[DEBUG] Found data for ${timeSlot}:`, hourData);
         return {
           time: timeSlot,
-          actualWindSpeed: hourData.windSpeedAvgKt,
-          actualGustSpeed: hourData.gustSpeedMaxKt
+          actualWindSpeed: hourData.windSpeed,
+          actualGustSpeed: hourData.gustSpeed
         };
       }
       console.log(`[DEBUG] No data for ${timeSlot}`);

@@ -1,0 +1,15 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "max_tokens": {
+    "forecast": 2500,
+    "validation": 2000
+  },
+  "description": "LLM model configuration for wind forecasting",
+  "notes": {
+    "temperature": "Range 0.0-1.0. Higher = more random/creative, Lower = more deterministic. Default: 1.0",
+    "top_p": "Nucleus sampling. Range 0.0-1.0. Lower = more constrained vocabulary. Default: 1.0 (no constraint)",
+    "model": "Claude Sonnet 4 model identifier"
+  }
+}

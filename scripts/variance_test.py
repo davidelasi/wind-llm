@@ -6,10 +6,11 @@ Runs the same 2023-07-15 forecast multiple times to measure natural LLM variance
 Uses the validated Python testing approach (no production API calls).
 
 Usage:
-    python3 variance_test.py [num_runs]
+    python3 variance_test.py [num_runs] [temperature]
 
 Example:
-    python3 variance_test.py 5
+    python3 variance_test.py 5          # 5 runs with default temperature
+    python3 variance_test.py 5 0.0      # 5 runs with temperature=0.0
 """
 
 import json
@@ -21,6 +22,15 @@ from anthropic import Anthropic
 
 # Add parent directory to path to import from correct_prediction_test
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Load model configuration
+def load_model_config():
+    """Load model configuration from config file"""
+    config_path = Path(__file__).parent.parent / "config" / "model_config.json"
+    with open(config_path, 'r') as f:
+        return json.load(f)
+
+MODEL_CONFIG = load_model_config()
 
 def find_forecast_for_date(test_date_str, forecast_file):
     """Find the forecast for 2023-07-15"""
@@ -189,14 +199,19 @@ def parse_llm_response(response_text):
     return predictions
 
 
-def run_single_prediction(client, prompt, actual_data, run_number):
+def run_single_prediction(client, prompt, actual_data, run_number, temperature=None, top_p=None):
     """Run a single prediction and calculate errors"""
     print(f"  Run {run_number}...", end='', flush=True)
 
+    # Use config values if not specified
+    temp = temperature if temperature is not None else MODEL_CONFIG['temperature']
+    top_p_val = top_p if top_p is not None else MODEL_CONFIG['top_p']
+
     message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        temperature=1.0,
+        model=MODEL_CONFIG['model'],
+        max_tokens=MODEL_CONFIG['max_tokens']['validation'],
+        temperature=temp,
+        top_p=top_p_val,
         messages=[{
             "role": "user",
             "content": prompt
@@ -233,12 +248,16 @@ def run_single_prediction(client, prompt, actual_data, run_number):
 
 def main():
     num_runs = int(sys.argv[1]) if len(sys.argv) > 1 else 5
+    temperature = float(sys.argv[2]) if len(sys.argv) > 2 else MODEL_CONFIG['temperature']
     test_date = "2023-07-15"
 
     print(f"🧪 LLM VARIANCE TEST - Python Method")
     print("=" * 70)
     print(f"Test Date: {test_date}")
     print(f"Number of runs: {num_runs}")
+    print(f"Temperature: {temperature}")
+    print(f"Top-p: {MODEL_CONFIG['top_p']}")
+    print(f"Model: {MODEL_CONFIG['model']}")
     print()
 
     # File paths - try both possible locations
@@ -297,7 +316,7 @@ def main():
     print(f"Running {num_runs} predictions...")
     runs = []
     for i in range(1, num_runs + 1):
-        run = run_single_prediction(client, prompt, actual_data, i)
+        run = run_single_prediction(client, prompt, actual_data, i, temperature=temperature)
         runs.append(run)
 
     print()
@@ -318,6 +337,12 @@ def main():
         'test_date': test_date,
         'num_runs': num_runs,
         'method': 'Python (validated approach)',
+        'model_config': {
+            'model': MODEL_CONFIG['model'],
+            'temperature': temperature,
+            'top_p': MODEL_CONFIG['top_p'],
+            'max_tokens': MODEL_CONFIG['max_tokens']['validation']
+        },
         'runs': runs,
         'actual_data': actual_data,
         'statistics': {
@@ -347,8 +372,9 @@ def main():
     print(f"Validated values: WSPD=1.0kt, GST=1.4kt")
     print()
 
-    # Save results
-    output_file = Path(__file__).parent.parent / "web-ui/data/variance_test_results.json"
+    # Save results with temperature-specific filename to public folder for web access
+    temp_str = str(temperature).replace('.', '_')
+    output_file = Path(__file__).parent.parent / f"web-ui/public/data/variance_test_results_temp_{temp_str}.json"
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_file, 'w') as f:

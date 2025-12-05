@@ -1,0 +1,666 @@
+You are a wind forecasting expert. Given NWS coastal water forecasts, predict hourly wind speeds (WSPD) and gusts (GST) in knots for the daytime hours.
+
+Here are 15 examples showing how to interpret forecasts and actual outcomes:
+
+=== EXAMPLE 1 ===
+FORECAST:
+day_0_day: SE wind 5 to 10 kt, becoming SW this afternoon. Seas 3 to 4 ft. Waves: W 2 ft at 8 seconds and SW 2 ft at 13 seconds. Patchy fog this morning.
+day_0_night: SW wind 5 to 10 kt, becoming SE after midnight. Seas 3 to 4 ft. Waves: W 4 ft at 9 seconds and SW 2 ft at 14 seconds. Patchy fog after midnight.
+day_1_day: E wind 5 to 10 kt, becoming SW in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 9 seconds, SE 2 ft at 10 seconds and SW 2 ft at 15 seconds. Patchy fog in the morning.
+day_1_night: SW wind 5 to 10 kt, becoming SE after midnight. Seas 3 ft. Waves: W 2 ft at 8 seconds and SW 2 ft at 15 seconds. Patchy fog after midnight.
+day_2_day: S wind 5 to 10 kt. Seas 3 ft. Waves: W 2 ft at 9 seconds and SW 2 ft at 14 seconds. Patchy fog in the morning.
+day_2_night: SW wind 5 to 10 kt, becoming S after midnight. Seas 3 ft in the evening, then 2 ft or less. Waves: W 2 ft at 9 seconds and SW 2 ft at 14 seconds. Patchy fog after midnight.
+day_3_day: S wind 5 kt, becoming SW in the afternoon and evening, becoming 5 kt after midnight. Seas 2 ft or less. Waves: W 2 ft at 9 seconds and SW 2 ft at 15 seconds. Patchy fog in the morning. Patchy fog after midnight.
+day_4_day: S wind 5 kt, becoming SW in the afternoon, becoming W in the evening, becoming 5 kt after midnight. Seas 2 ft or less, then 3 ft. Waves: W 2 ft at 12 seconds and S 2 ft at 14 seconds. Patchy fog in the morning. Patchy fog after midnight.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2024-06-03):
+  10:00-11:00: WSPD 3.1kt, GST 4.8kt
+  11:00-12:00: WSPD 4.0kt, GST 6.1kt
+  12:00-13:00: WSPD 5.5kt, GST 8.0kt
+  13:00-14:00: WSPD 6.4kt, GST 8.2kt
+  14:00-15:00: WSPD 7.8kt, GST 10.3kt
+  15:00-16:00: WSPD 8.0kt, GST 11.0kt
+  16:00-17:00: WSPD 8.3kt, GST 11.8kt
+  17:00-18:00: WSPD 8.7kt, GST 11.8kt
+
+day_1 (2024-06-04):
+  10:00-11:00: WSPD 2.6kt, GST 4.0kt
+  11:00-12:00: WSPD 3.5kt, GST 4.9kt
+  12:00-13:00: WSPD 5.0kt, GST 6.3kt
+  13:00-14:00: WSPD 5.4kt, GST 8.2kt
+  14:00-15:00: WSPD 7.4kt, GST 8.9kt
+  15:00-16:00: WSPD 7.8kt, GST 9.3kt
+  16:00-17:00: WSPD 9.1kt, GST 10.6kt
+  17:00-18:00: WSPD 9.2kt, GST 10.6kt
+
+day_2 (2024-06-05):
+  10:00-11:00: WSPD 3.0kt, GST 3.8kt
+  11:00-12:00: WSPD 5.4kt, GST 8.0kt
+  12:00-13:00: WSPD 6.6kt, GST 9.7kt
+  13:00-14:00: WSPD 8.5kt, GST 10.8kt
+  14:00-15:00: WSPD 9.1kt, GST 11.8kt
+  15:00-16:00: WSPD 9.1kt, GST 11.6kt
+  16:00-17:00: WSPD 8.9kt, GST 11.8kt
+  17:00-18:00: WSPD 8.9kt, GST 11.4kt
+
+
+=== EXAMPLE 2 ===
+FORECAST:
+day_0_day: W wind 10 to 15 kt. Seas 3 to 5 ft. Waves: W 4 ft at 6 seconds and S 2 ft at 14 seconds.
+day_0_night: W wind 10 to 15 kt, becoming SE 5 to 10 kt after midnight. Seas 3 to 4 ft. Waves: W 4 ft at 7 seconds and S 2 ft at 14 seconds. Patchy fog after midnight.
+day_1_day: SE wind 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 7 seconds and S 2 ft at 12 seconds. Patchy fog in the morning.
+day_1_night: W wind 10 to 15 kt, becoming SE 5 to 10 kt after midnight. Seas 3 to 4 ft. Waves: S 3 ft at 7 seconds and W 2 ft at 9 seconds. Patchy fog after midnight.
+day_2_day: SE wind 5 to 10 kt, becoming SW 10 kt in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 8 seconds, SE 2 ft at 10 seconds and S 2 ft at 14 seconds. Patchy fog in the morning.
+day_2_night: W wind 10 kt, becoming SE 5 to 10 kt after midnight. Seas 3 ft. Waves: W 2 ft at 8 seconds and SW 2 ft at 13 seconds. Patchy fog after midnight.
+day_3_day: SE wind 5 to 10 kt, except SW 10 kt in the afternoon and evening. Seas 3 ft. Waves: W 2 ft at 10 seconds and SW 2 ft at 14 seconds. Patchy fog in the morning and again after midnight.
+day_4_day: SE wind 5 to 10 kt, except W 10 kt in the afternoon and evening. Seas 3 ft. Waves: W 2 ft at 10 seconds and SW 2 ft at 15 seconds. Patchy fog in the morning and again after midnight.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2024-06-02):
+  10:00-11:00: WSPD 4.6kt, GST 6.3kt
+  11:00-12:00: WSPD 5.1kt, GST 6.8kt
+  12:00-13:00: WSPD 5.8kt, GST 7.8kt
+  13:00-14:00: WSPD 6.6kt, GST 8.0kt
+  14:00-15:00: WSPD 6.3kt, GST 8.4kt
+  15:00-16:00: WSPD 6.8kt, GST 10.1kt
+  16:00-17:00: WSPD 7.0kt, GST 10.8kt
+  17:00-18:00: WSPD 8.1kt, GST 11.0kt
+
+day_1 (2024-06-03):
+  10:00-11:00: WSPD 3.1kt, GST 4.8kt
+  11:00-12:00: WSPD 4.0kt, GST 6.1kt
+  12:00-13:00: WSPD 5.5kt, GST 8.0kt
+  13:00-14:00: WSPD 6.4kt, GST 8.2kt
+  14:00-15:00: WSPD 7.8kt, GST 10.3kt
+  15:00-16:00: WSPD 8.0kt, GST 11.0kt
+  16:00-17:00: WSPD 8.3kt, GST 11.8kt
+  17:00-18:00: WSPD 8.7kt, GST 11.8kt
+
+day_2 (2024-06-04):
+  10:00-11:00: WSPD 2.6kt, GST 4.0kt
+  11:00-12:00: WSPD 3.5kt, GST 4.9kt
+  12:00-13:00: WSPD 5.0kt, GST 6.3kt
+  13:00-14:00: WSPD 5.4kt, GST 8.2kt
+  14:00-15:00: WSPD 7.4kt, GST 8.9kt
+  15:00-16:00: WSPD 7.8kt, GST 9.3kt
+  16:00-17:00: WSPD 9.1kt, GST 10.6kt
+  17:00-18:00: WSPD 9.2kt, GST 10.6kt
+
+
+=== EXAMPLE 3 ===
+FORECAST:
+day_0_day: NW winds 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 3 to 4 ft at 8 seconds.
+day_0_night: W winds 5 to 10 kt, becoming S to SE after midnight. Wind waves 2 ft or less. W swell 2 to 4 ft at 9 seconds. Patchy fog after midnight.
+day_1_day: S to SE winds 5 to 10 kt, becoming SW to W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 to 4 ft at 9 seconds. Patchy fog in the morning.
+day_1_night: SW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 to 4 ft at 9 seconds. Patchy fog after midnight.
+day_2_day: Winds variable 10 kt or less, becoming SW 10 kt in the afternoon. Wind waves 2 ft or less. W swell 3 ft at 9 seconds. Patchy fog in the morning.
+day_2_night: W winds 5 to 10 kt, becoming SE after midnight. Wind waves 2 ft or less. W swell 2 to 4 ft at 9 seconds. Patchy fog after midnight.
+day_3_day: W winds 10 to 15 kt. Wind waves 1 to 3 ft. W swell 3 to 5 ft. Patchy fog.
+day_4_day: W winds 15 to 20 kt. Combined seas 3 to 5 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2020-08-01):
+  10:00-11:00: WSPD 2.3kt, GST 4.2kt
+  11:00-12:00: WSPD 1.5kt, GST 4.4kt
+  12:00-13:00: WSPD 3.8kt, GST 6.1kt
+  13:00-14:00: WSPD 3.8kt, GST 6.1kt
+  14:00-15:00: WSPD 2.0kt, GST 3.4kt
+  15:00-16:00: WSPD 1.9kt, GST 3.0kt
+  16:00-17:00: WSPD 1.4kt, GST 3.0kt
+  17:00-18:00: WSPD 3.1kt, GST 4.2kt
+
+day_1 (2020-08-02):
+  10:00-11:00: WSPD 6.2kt, GST 8.2kt
+  11:00-12:00: WSPD 4.6kt, GST 7.4kt
+  12:00-13:00: WSPD 6.1kt, GST 8.4kt
+  13:00-14:00: WSPD 7.5kt, GST 10.3kt
+  14:00-15:00: WSPD 8.4kt, GST 10.3kt
+  15:00-16:00: WSPD 8.1kt, GST 10.1kt
+  16:00-17:00: WSPD 7.6kt, GST 9.3kt
+  17:00-18:00: WSPD 6.1kt, GST 8.2kt
+
+day_2 (2020-08-03):
+  10:00-11:00: WSPD 8.5kt, GST 10.4kt
+  11:00-12:00: WSPD 9.6kt, GST 11.2kt
+  12:00-13:00: WSPD 9.7kt, GST 12.0kt
+  13:00-14:00: WSPD 9.1kt, GST 10.6kt
+  14:00-15:00: WSPD 9.5kt, GST 11.6kt
+  15:00-16:00: WSPD 9.4kt, GST 10.6kt
+  16:00-17:00: WSPD 8.7kt, GST 10.6kt
+  17:00-18:00: WSPD 7.1kt, GST 9.5kt
+
+
+=== EXAMPLE 4 ===
+FORECAST:
+day_0_day: SE winds 5 to 10 kt, becoming SW 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 13 seconds. Patchy fog in the morning.
+day_0_night: SW winds 10 to 15 kt, becoming SE 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 13 seconds. Patchy fog after midnight.
+day_1_day: Winds variable 10 kt or less, becoming SW 10 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 to 3 ft at 9 seconds. Patchy fog in the morning.
+day_1_night: SW winds 10 to 15 kt, becoming SE 5 to 10 kt after midnight. Wind waves 2 ft or less. W swell 2 to 3 ft at 9 seconds. Patchy fog after midnight.
+day_2_day: E winds 5 to 10 kt, becoming SW 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 ft at 9 seconds. Patchy fog in the morning.
+day_2_night: SW winds 10 to 15 kt, becoming SE 5 to 10 kt after midnight. Wind waves 2 ft or less. W swell 2 ft at 9 seconds. Patchy fog after midnight.
+day_3_day: S winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 ft. Patchy fog.
+day_4_day: W winds 10 to 15 kt. Wind waves 2 ft or less. W swell 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2022-06-07):
+  10:00-11:00: WSPD 4.9kt, GST 7.0kt
+  11:00-12:00: WSPD 8.7kt, GST 12.5kt
+  12:00-13:00: WSPD 11.1kt, GST 13.3kt
+  13:00-14:00: WSPD 13.3kt, GST 18.6kt
+  14:00-15:00: WSPD 13.4kt, GST 18.2kt
+  15:00-16:00: WSPD 14.0kt, GST 19.0kt
+  16:00-17:00: WSPD 12.9kt, GST 18.1kt
+  17:00-18:00: WSPD 11.8kt, GST 16.1kt
+
+day_1 (2022-06-08):
+  10:00-11:00: WSPD 5.9kt, GST 9.9kt
+  11:00-12:00: WSPD 10.4kt, GST 14.1kt
+  12:00-13:00: WSPD 13.5kt, GST 16.1kt
+  13:00-14:00: WSPD 13.4kt, GST 16.3kt
+  14:00-15:00: WSPD 13.7kt, GST 18.4kt
+  15:00-16:00: WSPD 13.1kt, GST 17.9kt
+  16:00-17:00: WSPD 12.3kt, GST 17.9kt
+  17:00-18:00: WSPD 10.9kt, GST 14.6kt
+
+day_2 (2022-06-09):
+  10:00-11:00: WSPD 4.8kt, GST 9.7kt
+  11:00-12:00: WSPD 8.5kt, GST 11.2kt
+  12:00-13:00: WSPD 8.9kt, GST 11.4kt
+  13:00-14:00: WSPD 8.9kt, GST 11.8kt
+  14:00-15:00: WSPD 10.7kt, GST 13.5kt
+  15:00-16:00: WSPD 13.4kt, GST 16.9kt
+  16:00-17:00: WSPD 11.2kt, GST 16.9kt
+  17:00-18:00: WSPD 11.4kt, GST 16.7kt
+
+
+=== EXAMPLE 5 ===
+FORECAST:
+day_0_day: Light winds, becoming W 10 to 15 kt this afternoon. Seas 2 to 4 ft. Waves: W 3 ft at 8 seconds and S 2 ft at 14 seconds. Patchy dense fog this morning with vsby 1 NM or less.
+day_0_night: W wind 5 to 10 kt in the evening, becoming light. Seas 3 ft. Waves: W 2 ft at 8 seconds and S 2 ft at 14 seconds. Patchy fog after midnight.
+day_1_day: Light winds, becoming W 10 to 15 kt in the afternoon. Seas 2 to 3 ft. Waves: W 2 ft at 8 seconds and S 2 ft at 13 seconds. Patchy fog in the morning.
+day_1_night: W wind 10 to 15 kt, becoming 5 to 10 kt after midnight. Seas 3 ft. Waves: W 2 ft at 6 seconds and S 2 ft at 12 seconds. Patchy fog after midnight.
+day_2_day: W wind 5 to 10 kt, becoming 10 to 20 kt in the afternoon. Seas 3 ft. Waves: W 2 ft at 7 seconds and S 2 ft at 13 seconds. Patchy fog in the morning.
+day_2_night: W wind 10 to 20 kt, becoming 5 to 10 kt after midnight. Seas 3 to 4 ft. Waves: W 3 ft at 5 seconds and S 2 ft at 15 seconds. Patchy fog after midnight.
+day_3_day: W wind 5 to 10 kt, becoming 10 to 15 kt in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 6 seconds and S 2 ft at 15 seconds. Patchy fog in the morning.
+day_3_night: W wind 10 to 20 kt. Seas 3 to 5 ft. Waves: W 3 ft at 5 seconds and S 2 ft at 14 seconds. Patchy fog after midnight.
+day_4_day: W wind 5 to 10 kt, becoming 10 to 15 kt in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 6 seconds and S 2 ft at 14 seconds. Patchy fog in the morning.
+day_4_night: W wind 10 to 20 kt. Seas 3 to 5 ft. Waves: W 4 ft at 6 seconds and S 2 ft at 14 seconds. Patchy fog after midnight.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2024-07-22):
+  10:00-11:00: WSPD 9.8kt, GST 13.1kt
+  11:00-12:00: WSPD 10.7kt, GST 15.0kt
+  12:00-13:00: WSPD 12.3kt, GST 16.1kt
+  13:00-14:00: WSPD 12.2kt, GST 16.1kt
+  14:00-15:00: WSPD 13.6kt, GST 17.5kt
+  15:00-16:00: WSPD 12.8kt, GST 16.9kt
+  16:00-17:00: WSPD 12.2kt, GST 16.9kt
+  17:00-18:00: WSPD 12.6kt, GST 18.4kt
+
+day_1 (2024-07-23):
+  10:00-11:00: WSPD 10.7kt, GST 13.1kt
+  11:00-12:00: WSPD 11.6kt, GST 15.8kt
+  12:00-13:00: WSPD 10.6kt, GST 14.6kt
+  13:00-14:00: WSPD 11.2kt, GST 16.0kt
+  14:00-15:00: WSPD 12.2kt, GST 17.3kt
+  15:00-16:00: WSPD 13.2kt, GST 17.7kt
+  16:00-17:00: WSPD 13.5kt, GST 18.6kt
+  17:00-18:00: WSPD 11.9kt, GST 16.9kt
+
+day_2 (2024-07-24):
+  10:00-11:00: WSPD 9.9kt, GST 13.5kt
+  11:00-12:00: WSPD 10.1kt, GST 14.8kt
+  12:00-13:00: WSPD 13.2kt, GST 17.9kt
+  13:00-14:00: WSPD 12.8kt, GST 17.5kt
+  14:00-15:00: WSPD 12.9kt, GST 18.1kt
+  15:00-16:00: WSPD 13.4kt, GST 18.1kt
+  16:00-17:00: WSPD 12.6kt, GST 16.9kt
+  17:00-18:00: WSPD 11.1kt, GST 16.3kt
+
+
+=== EXAMPLE 6 ===
+FORECAST:
+day_0_day: NW winds 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 9 seconds and S 3 ft at 17 seconds. Patchy fog.
+day_0_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 ft at 9 seconds and S 3 ft at 16 seconds. Patchy fog. Patchy drizzle after midnight.
+day_1_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 11 seconds and S 3 ft at 15 seconds. Patchy fog in the morning. Patchy drizzle in the morning.
+day_1_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 1 to 3 ft. Mixed swell W 2 ft at 11 seconds and S 3 ft at 15 seconds. Patchy fog.
+day_2_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 3 ft at 14 seconds. Patchy fog in the morning.
+day_2_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 2 ft at 14 seconds. Patchy fog after midnight.
+day_3_day: W winds 15 to 20 kt. Combined seas 3 to 4 ft. Patchy fog.
+day_4_day: SW winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 ft and S 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2021-06-22):
+  10:00-11:00: WSPD 13.9kt, GST 19.0kt
+  11:00-12:00: WSPD 14.8kt, GST 20.5kt
+  12:00-13:00: WSPD 13.9kt, GST 19.0kt
+  13:00-14:00: WSPD 13.6kt, GST 18.2kt
+  14:00-15:00: WSPD 14.0kt, GST 19.6kt
+  15:00-16:00: WSPD 14.0kt, GST 19.4kt
+  16:00-17:00: WSPD 13.9kt, GST 20.1kt
+  17:00-18:00: WSPD 12.9kt, GST 17.7kt
+
+day_1 (2021-06-23):
+  10:00-11:00: WSPD 13.0kt, GST 18.1kt
+  11:00-12:00: WSPD 13.0kt, GST 18.1kt
+  12:00-13:00: WSPD 15.0kt, GST 21.5kt
+  13:00-14:00: WSPD 16.8kt, GST 23.6kt
+  14:00-15:00: WSPD 17.0kt, GST 23.0kt
+  15:00-16:00: WSPD 16.3kt, GST 21.7kt
+  16:00-17:00: WSPD 15.1kt, GST 20.1kt
+  17:00-18:00: WSPD 14.2kt, GST 19.2kt
+
+day_2 (2021-06-24):
+  10:00-11:00: WSPD 11.1kt, GST 16.5kt
+  11:00-12:00: WSPD 13.3kt, GST 19.4kt
+  12:00-13:00: WSPD 14.9kt, GST 20.5kt
+  13:00-14:00: WSPD 15.7kt, GST 22.0kt
+  14:00-15:00: WSPD 15.6kt, GST 21.7kt
+  15:00-16:00: WSPD 16.3kt, GST 21.3kt
+  16:00-17:00: WSPD 17.3kt, GST 23.4kt
+  17:00-18:00: WSPD 15.6kt, GST 21.5kt
+
+
+=== EXAMPLE 7 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 6 seconds and S 2 ft at 14 seconds. Patchy fog in the morning.
+day_0_night: W winds 10 to 15 kt, becoming SW 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 6 seconds and S 2 ft at 13 seconds. Patchy dense fog with visibility 1 nm or less after midnight.
+day_1_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 2 ft at 13 seconds. Patchy dense fog with visibility 1 nm or less in the morning.
+day_1_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 7 seconds and SW 2 ft at 15 seconds. Patchy fog after midnight.
+day_2_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 8 seconds and S 2 ft at 15 seconds. Patchy fog in the morning.
+day_2_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 9 seconds and S 2 ft at 14 seconds.
+day_3_day: W winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft.
+day_4_day: W winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2019-08-31):
+  10:00-11:00: WSPD 4.6kt, GST 6.3kt
+  11:00-12:00: WSPD 8.1kt, GST 11.4kt
+  12:00-13:00: WSPD 12.2kt, GST 15.8kt
+  13:00-14:00: WSPD 12.2kt, GST 16.9kt
+  14:00-15:00: WSPD 14.8kt, GST 19.8kt
+  15:00-16:00: WSPD 12.1kt, GST 16.3kt
+  16:00-17:00: WSPD 12.8kt, GST 18.6kt
+  17:00-18:00: WSPD 13.4kt, GST 18.1kt
+
+day_1 (2019-09-01):
+  10:00-11:00: WSPD 3.4kt, GST 5.5kt
+  11:00-12:00: WSPD 4.7kt, GST 6.8kt
+  12:00-13:00: WSPD 6.6kt, GST 8.5kt
+  13:00-14:00: WSPD 9.4kt, GST 12.5kt
+  14:00-15:00: WSPD 12.5kt, GST 16.7kt
+  15:00-16:00: WSPD 12.0kt, GST 17.5kt
+  16:00-17:00: WSPD 11.8kt, GST 15.4kt
+  17:00-18:00: WSPD 9.3kt, GST 12.5kt
+
+day_2 (2019-09-02):
+  10:00-11:00: WSPD 3.5kt, GST 4.9kt
+  11:00-12:00: WSPD 3.2kt, GST 5.7kt
+  12:00-13:00: WSPD 5.2kt, GST 7.4kt
+  13:00-14:00: WSPD 7.7kt, GST 9.3kt
+  14:00-15:00: WSPD 8.5kt, GST 10.8kt
+  15:00-16:00: WSPD 10.4kt, GST 14.4kt
+  16:00-17:00: WSPD 11.0kt, GST 16.0kt
+  17:00-18:00: WSPD 7.5kt, GST 11.8kt
+
+
+=== EXAMPLE 8 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 to 3 ft at 8 seconds. Patchy fog in the morning.
+day_0_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. W swell 3 ft at 8 seconds.
+day_1_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 3 ft at 8 seconds.
+day_1_night: W winds 10 to 20 kt, becoming variable 10 kt or less. Wind waves 1 to 3 ft. W swell 2 to 3 ft at 7 seconds.
+day_2_day: NW winds 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 to 3 ft at 7 seconds.
+day_2_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. W swell 3 ft at 7 seconds.
+day_3_day: W winds 10 to 15 kt. Wind waves 2 ft or less. W swell 2 to 3 ft. Patchy fog.
+day_4_day: W winds 10 to 15 kt. Wind waves 1 to 3 ft. W swell 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2020-08-04):
+  10:00-11:00: WSPD 3.2kt, GST 5.1kt
+  11:00-12:00: WSPD 3.7kt, GST 4.8kt
+  12:00-13:00: WSPD 6.7kt, GST 10.4kt
+  13:00-14:00: WSPD 8.6kt, GST 10.4kt
+  14:00-15:00: WSPD 10.0kt, GST 15.2kt
+  15:00-16:00: WSPD 12.0kt, GST 16.0kt
+  16:00-17:00: WSPD 13.1kt, GST 18.2kt
+  17:00-18:00: WSPD 10.7kt, GST 15.2kt
+
+day_1 (2020-08-05):
+  10:00-11:00: WSPD 4.8kt, GST 8.5kt
+  11:00-12:00: WSPD 8.5kt, GST 10.8kt
+  12:00-13:00: WSPD 10.7kt, GST 15.2kt
+  13:00-14:00: WSPD 11.8kt, GST 15.6kt
+  14:00-15:00: WSPD 12.3kt, GST 16.5kt
+  15:00-16:00: WSPD 12.7kt, GST 17.1kt
+  16:00-17:00: WSPD 12.9kt, GST 17.1kt
+  17:00-18:00: WSPD 10.1kt, GST 14.4kt
+
+day_2 (2020-08-06):
+  10:00-11:00: WSPD 7.2kt, GST 8.9kt
+  11:00-12:00: WSPD 6.9kt, GST 7.8kt
+  12:00-13:00: WSPD 6.4kt, GST 8.0kt
+  13:00-14:00: WSPD 6.2kt, GST 8.0kt
+  14:00-15:00: WSPD 7.3kt, GST 9.5kt
+  15:00-16:00: WSPD 11.0kt, GST 14.4kt
+  16:00-17:00: WSPD 12.6kt, GST 16.1kt
+  17:00-18:00: WSPD 9.8kt, GST 14.1kt
+
+
+=== EXAMPLE 9 ===
+FORECAST:
+day_0_day: NW winds 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 3 ft at 6 seconds and S 2 ft at 16 seconds.
+day_0_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. W swell 3 to 4 ft at 7 seconds. Patchy fog after midnight.
+day_1_day: SW winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and S 2 ft at 17 seconds. Patchy fog in the morning.
+day_1_night: W winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and S 2 ft at 16 seconds. Patchy fog.
+day_2_day: Winds variable 10 kt or less, becoming W 10 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 7 seconds and S 2 ft at 15 seconds. Patchy fog in the morning.
+day_2_night: W winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and S 2 ft at 15 seconds. Patchy fog after midnight.
+day_3_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+day_4_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2021-08-26):
+  10:00-11:00: WSPD 11.4kt, GST 14.2kt
+  11:00-12:00: WSPD 11.4kt, GST 16.7kt
+  12:00-13:00: WSPD 13.0kt, GST 18.1kt
+  13:00-14:00: WSPD 14.2kt, GST 19.4kt
+  14:00-15:00: WSPD 13.9kt, GST 18.6kt
+  15:00-16:00: WSPD 10.9kt, GST 17.3kt
+  16:00-17:00: WSPD 10.0kt, GST 16.1kt
+  17:00-18:00: WSPD 11.0kt, GST 15.8kt
+
+day_1 (2021-08-27):
+  10:00-11:00: WSPD 9.6kt, GST 13.3kt
+  11:00-12:00: WSPD 11.0kt, GST 15.0kt
+  12:00-13:00: WSPD 11.4kt, GST 16.0kt
+  13:00-14:00: WSPD 12.0kt, GST 16.3kt
+  14:00-15:00: WSPD 13.6kt, GST 17.5kt
+  15:00-16:00: WSPD 13.7kt, GST 17.7kt
+  16:00-17:00: WSPD 11.9kt, GST 16.5kt
+  17:00-18:00: WSPD 9.0kt, GST 12.3kt
+
+day_2 (2021-08-28):
+  10:00-11:00: WSPD 9.9kt, GST 13.3kt
+  11:00-12:00: WSPD 12.3kt, GST 16.0kt
+  12:00-13:00: WSPD 12.1kt, GST 16.5kt
+  13:00-14:00: WSPD 13.2kt, GST 18.2kt
+  14:00-15:00: WSPD 12.3kt, GST 17.1kt
+  15:00-16:00: WSPD 12.6kt, GST 16.9kt
+  16:00-17:00: WSPD 13.6kt, GST 18.8kt
+  17:00-18:00: WSPD 11.0kt, GST 16.5kt
+
+
+=== EXAMPLE 10 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming SW 10 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 9 seconds and S 2 ft at 11 seconds. Areas of dense fog with vsby 1 nm or less. Vsby 1 NM or less.
+day_0_night: W winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 9 seconds and S 2 ft at 11 seconds. Patchy dense fog with vsby 1 nm or less after midnight.
+day_1_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 9 seconds and S 2 ft at 10 seconds. Patchy fog in the morning.
+day_1_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 10 seconds. Patchy fog after midnight.
+day_2_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. W swell 2 to 3 ft at 8 seconds. S swell 2 ft in the morning. Patchy fog in the morning.
+day_2_night: W winds 10 to 15 kt in the evening, becoming 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 4 ft at 7 seconds and S 2 ft at 12 seconds. Patchy fog after midnight.
+day_3_day: W winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 to 4 ft. Patchy fog.
+day_4_day: SW winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2023-07-17):
+  10:00-11:00: WSPD 4.6kt, GST 6.1kt
+  11:00-12:00: WSPD 5.9kt, GST 7.4kt
+  12:00-13:00: WSPD 9.3kt, GST 12.3kt
+  13:00-14:00: WSPD 11.6kt, GST 15.4kt
+  14:00-15:00: WSPD 11.8kt, GST 16.5kt
+  15:00-16:00: WSPD 11.2kt, GST 15.6kt
+  16:00-17:00: WSPD 13.4kt, GST 18.1kt
+  17:00-18:00: WSPD 12.6kt, GST 17.3kt
+
+day_1 (2023-07-18):
+  10:00-11:00: WSPD 9.9kt, GST 14.2kt
+  11:00-12:00: WSPD 10.3kt, GST 14.6kt
+  12:00-13:00: WSPD 11.6kt, GST 16.5kt
+  13:00-14:00: WSPD 13.7kt, GST 18.4kt
+  14:00-15:00: WSPD 14.0kt, GST 19.8kt
+  15:00-16:00: WSPD 14.3kt, GST 19.4kt
+  16:00-17:00: WSPD 13.7kt, GST 18.2kt
+  17:00-18:00: WSPD 12.3kt, GST 17.1kt
+
+day_2 (2023-07-19):
+  10:00-11:00: WSPD 10.8kt, GST 14.6kt
+  11:00-12:00: WSPD 11.3kt, GST 15.2kt
+  12:00-13:00: WSPD 12.6kt, GST 17.3kt
+  13:00-14:00: WSPD 12.9kt, GST 16.5kt
+  14:00-15:00: WSPD 12.0kt, GST 16.1kt
+  15:00-16:00: WSPD 13.6kt, GST 18.1kt
+  16:00-17:00: WSPD 13.0kt, GST 18.2kt
+  17:00-18:00: WSPD 10.8kt, GST 16.0kt
+
+
+=== EXAMPLE 11 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 3 to 4 ft at 14 seconds.
+day_0_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and S 3 to 4 ft at 13 seconds.
+day_1_day: Winds variable 10 kt or less, becoming SW 10 to 15 kt in the afternoon. Wind waves 2 ft or less. S swell 3 to 4 ft at 12 seconds.
+day_1_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 3 ft at 12 seconds.
+day_2_day: Winds variable 10 kt or less, becoming W 10 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 7 seconds and S 3 ft at 12 seconds.
+day_2_night: W winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 7 seconds and S 2 ft at 12 seconds.
+day_3_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft.
+day_4_day: W winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2019-07-05):
+  10:00-11:00: WSPD 3.2kt, GST 4.8kt
+  11:00-12:00: WSPD 7.3kt, GST 9.1kt
+  12:00-13:00: WSPD 7.8kt, GST 9.7kt
+  13:00-14:00: WSPD 9.8kt, GST 12.2kt
+  14:00-15:00: WSPD 11.6kt, GST 16.0kt
+  15:00-16:00: WSPD 11.9kt, GST 16.5kt
+  16:00-17:00: WSPD 13.1kt, GST 16.3kt
+  17:00-18:00: WSPD 13.2kt, GST 16.7kt
+
+day_1 (2019-07-06):
+  10:00-11:00: WSPD 4.0kt, GST 8.9kt
+  11:00-12:00: WSPD 6.1kt, GST 8.0kt
+  12:00-13:00: WSPD 6.8kt, GST 8.4kt
+  13:00-14:00: WSPD 8.4kt, GST 10.8kt
+  14:00-15:00: WSPD 10.9kt, GST 13.5kt
+  15:00-16:00: WSPD 12.3kt, GST 16.3kt
+  16:00-17:00: WSPD 12.7kt, GST 14.6kt
+  17:00-18:00: WSPD 11.6kt, GST 15.2kt
+
+day_2 (2019-07-07):
+  10:00-11:00: WSPD 10.1kt, GST 13.5kt
+  11:00-12:00: WSPD 9.1kt, GST 11.2kt
+  12:00-13:00: WSPD 7.8kt, GST 9.7kt
+  13:00-14:00: WSPD 8.7kt, GST 9.9kt
+  14:00-15:00: WSPD 8.6kt, GST 10.1kt
+  15:00-16:00: WSPD 8.5kt, GST 10.3kt
+  16:00-17:00: WSPD 9.2kt, GST 13.7kt
+  17:00-18:00: WSPD 9.1kt, GST 12.5kt
+
+
+=== EXAMPLE 12 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and S 3 ft at 15 seconds. Areas of dense fog with visibility 1 nm or less in the morning.
+day_0_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 to 4 ft at 8 seconds and S 2 ft at 15 seconds. Patchy fog after midnight.
+day_1_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 3 to 4 ft at 8 seconds and SW 3 ft at 18 seconds. Patchy fog in the morning.
+day_1_night: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 3 to 4 ft at 8 seconds and SW 3 ft at 17 seconds. Patchy fog after midnight.
+day_2_day: SE winds 5 to 10 kt, becoming SW in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 4 ft at 8 seconds and SW 3 ft at 16 seconds. Patchy fog in the morning.
+day_2_night: W winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and SW 3 ft at 16 seconds. Patchy fog after midnight.
+day_3_day: SW winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 ft and SW 2 ft. Patchy fog.
+day_4_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 ft and SW 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2019-07-15):
+  10:00-11:00: WSPD 8.0kt, GST 10.8kt
+  11:00-12:00: WSPD 10.7kt, GST 13.5kt
+  12:00-13:00: WSPD 11.3kt, GST 13.5kt
+  13:00-14:00: WSPD 12.5kt, GST 16.3kt
+  14:00-15:00: WSPD 11.8kt, GST 17.7kt
+  15:00-16:00: WSPD 11.0kt, GST 14.6kt
+  16:00-17:00: WSPD 12.6kt, GST 17.5kt
+  17:00-18:00: WSPD 10.2kt, GST 13.7kt
+
+day_1 (2019-07-16):
+  10:00-11:00: WSPD 4.8kt, GST 7.6kt
+  11:00-12:00: WSPD 6.5kt, GST 9.5kt
+  12:00-13:00: WSPD 7.2kt, GST 10.6kt
+  13:00-14:00: WSPD 7.9kt, GST 10.1kt
+  14:00-15:00: WSPD 8.5kt, GST 10.8kt
+  15:00-16:00: WSPD 8.9kt, GST 11.2kt
+  16:00-17:00: WSPD 9.4kt, GST 11.4kt
+  17:00-18:00: WSPD 7.8kt, GST 9.5kt
+
+day_2 (2019-07-17):
+  10:00-11:00: WSPD 10.5kt, GST 12.3kt
+  11:00-12:00: WSPD 8.8kt, GST 10.6kt
+  12:00-13:00: WSPD 8.1kt, GST 10.1kt
+  13:00-14:00: WSPD 6.6kt, GST 9.1kt
+  14:00-15:00: WSPD 6.6kt, GST 10.4kt
+  15:00-16:00: WSPD 5.7kt, GST 7.6kt
+  16:00-17:00: WSPD 6.2kt, GST 8.7kt
+  17:00-18:00: WSPD 9.0kt, GST 11.4kt
+
+
+=== EXAMPLE 13 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 10 seconds and S 2 ft at 14 seconds. Chance of showers in the morning. Slight chance of tstms.
+day_0_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 17 seconds.
+day_1_day: NW winds 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 19 seconds. Patchy fog in the morning.
+day_1_night: W to NW winds 10 to 20 kt, becoming variable 10 kt or less after midnight. Strongest western portion. Wind waves 2 to 3 ft. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 17 seconds. Patchy fog after midnight.
+day_2_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 17 seconds. Patchy fog in the morning.
+day_2_night: W winds 10 to 15 kt. Wind waves 1 to 3 ft. Mixed swell W 2 to 3 ft at 8 seconds and S 2 ft at 17 seconds. Patchy fog after midnight.
+day_3_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+day_4_day: W winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 ft. Patchy fog.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2022-06-22):
+  10:00-11:00: WSPD 9.4kt, GST 13.9kt
+  11:00-12:00: WSPD 11.3kt, GST 16.0kt
+  12:00-13:00: WSPD 11.7kt, GST 17.1kt
+  13:00-14:00: WSPD 12.2kt, GST 16.1kt
+  14:00-15:00: WSPD 12.6kt, GST 16.5kt
+  15:00-16:00: WSPD 12.5kt, GST 16.9kt
+  16:00-17:00: WSPD 12.5kt, GST 16.5kt
+  17:00-18:00: WSPD 10.6kt, GST 15.0kt
+
+day_1 (2022-06-23):
+  10:00-11:00: WSPD 10.3kt, GST 14.8kt
+  11:00-12:00: WSPD 11.4kt, GST 15.6kt
+  12:00-13:00: WSPD 12.2kt, GST 16.9kt
+  13:00-14:00: WSPD 14.1kt, GST 18.8kt
+  14:00-15:00: WSPD 15.0kt, GST 20.3kt
+  15:00-16:00: WSPD 14.1kt, GST 18.6kt
+  16:00-17:00: WSPD 12.7kt, GST 19.0kt
+  17:00-18:00: WSPD 12.8kt, GST 17.3kt
+
+day_2 (2022-06-24):
+  10:00-11:00: WSPD 11.7kt, GST 16.7kt
+  11:00-12:00: WSPD 13.0kt, GST 18.1kt
+  12:00-13:00: WSPD 13.2kt, GST 17.9kt
+  13:00-14:00: WSPD 14.3kt, GST 20.5kt
+  14:00-15:00: WSPD 12.4kt, GST 16.0kt
+  15:00-16:00: WSPD 13.6kt, GST 20.3kt
+  16:00-17:00: WSPD 13.5kt, GST 19.0kt
+  17:00-18:00: WSPD 12.5kt, GST 17.3kt
+
+
+=== EXAMPLE 14 ===
+FORECAST:
+day_0_day: Winds variable 10 kt or less, becoming W 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 7 seconds and S 3 ft at 18 seconds.
+day_0_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 3 ft at 17 seconds.
+day_1_day: Winds variable 10 kt or less, becoming SW 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 3 ft at 15 seconds.
+day_1_night: W winds 10 to 15 kt, becoming 5 to 10 kt after midnight. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 3 ft at 15 seconds.
+day_2_day: Winds variable 10 kt or less, becoming SW 10 to 15 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 ft at 6 seconds and S 2 ft at 15 seconds.
+day_2_night: W winds 10 to 15 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. S swell 2 ft at 15 seconds.
+day_3_day: W winds 10 to 15 kt. Wind waves 1 to 3 ft. Mixed swell W 2 to 3 ft and S 2 ft.
+day_4_day: W winds 10 to 15 kt. Wind waves 1 to 3 ft. Mixed swell W 2 to 3 ft and S 2 ft.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2019-07-08):
+  10:00-11:00: WSPD 3.8kt, GST 5.5kt
+  11:00-12:00: WSPD 6.0kt, GST 10.3kt
+  12:00-13:00: WSPD 7.8kt, GST 9.7kt
+  13:00-14:00: WSPD 10.7kt, GST 12.9kt
+  14:00-15:00: WSPD 11.7kt, GST 14.4kt
+  15:00-16:00: WSPD 10.9kt, GST 16.0kt
+  16:00-17:00: WSPD 10.5kt, GST 14.1kt
+  17:00-18:00: WSPD 12.2kt, GST 16.3kt
+
+day_1 (2019-07-09):
+  10:00-11:00: WSPD 7.5kt, GST 11.4kt
+  11:00-12:00: WSPD 9.5kt, GST 14.4kt
+  12:00-13:00: WSPD 11.6kt, GST 16.5kt
+  13:00-14:00: WSPD 13.2kt, GST 19.4kt
+  14:00-15:00: WSPD 15.9kt, GST 19.9kt
+  15:00-16:00: WSPD 15.7kt, GST 20.5kt
+  16:00-17:00: WSPD 16.1kt, GST 21.7kt
+  17:00-18:00: WSPD 15.2kt, GST 19.6kt
+
+day_2 (2019-07-10):
+  10:00-11:00: WSPD 10.9kt, GST 13.3kt
+  11:00-12:00: WSPD 12.4kt, GST 15.2kt
+  12:00-13:00: WSPD 12.8kt, GST 16.1kt
+  13:00-14:00: WSPD 13.7kt, GST 18.1kt
+  14:00-15:00: WSPD 14.9kt, GST 19.4kt
+  15:00-16:00: WSPD 15.9kt, GST 19.4kt
+  16:00-17:00: WSPD 14.0kt, GST 19.0kt
+  17:00-18:00: WSPD 12.0kt, GST 16.3kt
+
+
+=== EXAMPLE 15 ===
+FORECAST:
+day_0_day: Light winds, becoming W 5 to 10 kt this afternoon. Seas 2 to 3 ft. Waves: W 2 ft at 8 seconds and SW 2 ft at 14 seconds. Patchy fog late this morning.
+day_0_night: SW wind 10 to 15 kt in the evening, becoming light. Seas 2 to 4 ft. Waves: W 4 ft at 9 seconds and SW 2 ft at 12 seconds.
+day_1_day: Light winds, becoming W 10 to 20 kt with gusts to 25 kt in the afternoon. Seas 3 to 5 ft. Waves: W 4 ft at 10 seconds and SW 2 ft at 13 seconds. Patchy fog in the morning.
+day_1_night: W wind 15 to 25 kt, becoming NW 5 to 10 kt after midnight. Seas 5 to 7 ft. Waves: W 6 ft at 10 seconds and SW 2 ft at 13 seconds. Patchy fog after midnight.
+day_2_day: N wind 10 to 15 kt, becoming SW 10 to 20 kt in the afternoon. Seas 4 to 6 ft. Waves: W 5 ft at 10 seconds and SW 2 ft at 14 seconds. Patchy fog in the morning.
+day_2_night: W wind 10 to 20 kt, becoming E 5 to 10 kt after midnight. Seas 5 to 7 ft. Waves: W 5 ft at 10 seconds and SW 2 ft at 15 seconds. Patchy fog after midnight.
+day_3_day: E wind 5 to 10 kt, becoming SW 10 to 15 kt in the afternoon. Seas 3 to 5 ft. Waves: W 4 ft at 9 seconds and SW 2 ft at 16 seconds. Patchy fog in the morning.
+day_3_night: W wind 10 to 15 kt, becoming E 5 to 10 kt after midnight. Seas 4 to 6 ft. Waves: W 5 ft at 8 seconds and SW 2 ft at 14 seconds. Patchy fog after midnight.
+day_4_day: E wind 5 to 10 kt, becoming SW in the afternoon. Seas 3 to 5 ft. Waves: W 5 ft at 11 seconds and SW 2 ft at 14 seconds. Patchy fog in the morning.
+day_4_night: W wind 10 to 15 kt, becoming S after midnight. Seas 3 to 5 ft. Waves: W 4 ft at 10 seconds and SW 2 ft at 15 seconds. Patchy fog after midnight.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2024-06-14):
+  10:00-11:00: WSPD 7.2kt, GST 9.5kt
+  11:00-12:00: WSPD 9.7kt, GST 11.4kt
+  12:00-13:00: WSPD 10.5kt, GST 17.5kt
+  13:00-14:00: WSPD 13.4kt, GST 18.4kt
+  14:00-15:00: WSPD 13.4kt, GST 18.4kt
+  15:00-16:00: WSPD 12.2kt, GST 17.1kt
+  16:00-17:00: WSPD 11.0kt, GST 15.8kt
+  17:00-18:00: WSPD 9.8kt, GST 13.9kt
+
+day_1 (2024-06-15):
+  10:00-11:00: WSPD 9.1kt, GST 11.8kt
+  11:00-12:00: WSPD 10.9kt, GST 13.7kt
+  12:00-13:00: WSPD 11.1kt, GST 13.7kt
+  13:00-14:00: WSPD 11.1kt, GST 14.6kt
+  14:00-15:00: WSPD 10.8kt, GST 15.0kt
+  15:00-16:00: WSPD 12.2kt, GST 16.1kt
+  16:00-17:00: WSPD 11.2kt, GST 16.5kt
+  17:00-18:00: WSPD 10.5kt, GST 14.8kt
+
+day_2 (2024-06-16):
+  10:00-11:00: WSPD 7.1kt, GST 10.8kt
+  11:00-12:00: WSPD 5.9kt, GST 8.0kt
+  12:00-13:00: WSPD 5.2kt, GST 6.8kt
+  13:00-14:00: WSPD 5.9kt, GST 6.8kt
+  14:00-15:00: WSPD 6.1kt, GST 7.8kt
+  15:00-16:00: WSPD 6.5kt, GST 8.2kt
+  16:00-17:00: WSPD 6.4kt, GST 8.0kt
+  17:00-18:00: WSPD 7.0kt, GST 8.5kt
+
+
+=== FORECAST TO PREDICT ===
+ISSUED: 2023-07-15T08:05:00-08:00 (08:05)
+D0_DAY: D0_DAY (2023-07-15) Winds variable 10 kt or less, becoming SW 10 kt in the afternoon. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 7 seconds and SW 2 ft at 15 seconds. Patchy dense fog with vsby 1 nm or less. Vsby 1 NM or less.
+D0_NIGHT: D0_NIGHT (2023-07-15) SW winds 10 kt in the evening, becoming variable 10 kt or less. Wind waves 2 ft or less. Mixed swell W 2 ft at 8 seconds and SW 2 ft at 14 seconds. Patchy dense fog with vsby 1 nm or less in the evening, then patchy fog.
+
+Based on the patterns from all 15 examples above, predict the hourly wind conditions for 2023-07-15.
+
+Provide your prediction in this format:
+day_0 (2023-07-15):
+  HH:00-(HH+1):00: WSPD X.Xkt, GST Y.Ykt
+  (for each hour with available data)
+
+Analyze the D0_DAY forecast text carefully for wind speed ranges, timing cues, and pattern similarities to the examples.

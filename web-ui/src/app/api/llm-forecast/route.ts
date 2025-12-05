@@ -3,6 +3,18 @@ import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+// Load model configuration
+const MODEL_CONFIG_PATH = path.join(process.cwd(), '..', 'config', 'model_config.json');
+let MODEL_CONFIG: any = null;
+
+async function loadModelConfig() {
+  if (!MODEL_CONFIG) {
+    const content = await fs.readFile(MODEL_CONFIG_PATH, 'utf-8');
+    MODEL_CONFIG = JSON.parse(content);
+  }
+  return MODEL_CONFIG;
+}
+
 // Types
 interface ForecastPrediction {
   time: string;
@@ -457,11 +469,14 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
     console.log(`[LLM-FORECAST] Prompt created, length: ${prompt.length} characters`);
 
     console.log('[LLM-FORECAST] Calling Claude API for 5-day forecast prediction...');
+    const modelConfig = await loadModelConfig();
     let response;
     try {
       response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2500, // Increased for 5-day response
+        model: modelConfig.model,
+        max_tokens: modelConfig.max_tokens.forecast,
+        temperature: modelConfig.temperature,
+        top_p: modelConfig.top_p,
         messages: [{
           role: 'user',
           content: prompt

@@ -17,12 +17,16 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const numRuns = Math.min(parseInt(url.searchParams.get('runs') || '5'), 10);
+    const temperature = parseFloat(url.searchParams.get('temperature') || '1.0');
     const forceRun = url.searchParams.get('force') === 'true';
 
-    console.log(`[PYTHON-VARIANCE] Request for ${numRuns} runs (force: ${forceRun})`);
+    console.log(`[PYTHON-VARIANCE] Request for ${numRuns} runs, temp=${temperature} (force: ${forceRun})`);
 
-    // Check if we have cached results
-    const resultsPath = path.join(process.cwd(), 'data', 'variance_test_results.json');
+    // Check if we have cached results (temperature-specific)
+    // Normalize temperature to always have one decimal place (1 -> 1.0, 0 -> 0.0)
+    const normalizedTemp = temperature.toFixed(1);
+    const tempStr = normalizedTemp.replace('.', '_');
+    const resultsPath = path.join(process.cwd(), 'data', `variance_test_results_temp_${tempStr}.json`);
     let existingResults = null;
 
     try {
@@ -47,12 +51,14 @@ export async function GET(request: NextRequest) {
     console.log('[PYTHON-VARIANCE] Running Python variance test...');
 
     const scriptPath = path.join(process.cwd(), '..', 'scripts', 'variance_test.py');
-    const command = `python3 "${scriptPath}" ${numRuns}`;
+    const pythonPath = path.join(process.cwd(), '..', 'venv', 'bin', 'python3');
+    const command = `"${pythonPath}" "${scriptPath}" ${numRuns} ${normalizedTemp}`;
 
     try {
       const { stdout, stderr } = await execAsync(command, {
         env: {
           ...process.env,
+          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
           PYTHONPATH: path.join(process.cwd(), '..', 'scripts')
         },
         timeout: 300000 // 5 minute timeout

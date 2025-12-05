@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(venv/bin/python3:*)",
+      "Bash(ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY venv/bin/python3:*)",
+      "Bash(ls:*)",
+      "Bash(ANTHROPIC_API_KEY=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 venv/bin/python3:*)",
+      "Bash(cat:*)",
+      "Bash(for file in data/training/few_shot_examples_json/apr_fc{1,2,3,4}_examples.json)",
+      "Bash(done)",
+      "Bash(timeout 30 python3:*)",
+      "Bash(while read file)",
+      "Bash(do rm \"$file\")",
+      "Bash(tr:*)",
+      "Bash(test:*)",
+      "Bash(for month in jan mar may jul sep)",
+      "Bash(do echo \"=== Testing $month 2025 ===\" python3 scripts/testing/test_2025_forecast.py 2025-$month-15)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

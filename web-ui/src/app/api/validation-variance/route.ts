@@ -3,6 +3,18 @@ import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+// Load model configuration
+const MODEL_CONFIG_PATH = path.join(process.cwd(), '..', 'config', 'model_config.json');
+let MODEL_CONFIG: any = null;
+
+async function loadModelConfig() {
+  if (!MODEL_CONFIG) {
+    const content = await fs.readFile(MODEL_CONFIG_PATH, 'utf-8');
+    MODEL_CONFIG = JSON.parse(content);
+  }
+  return MODEL_CONFIG;
+}
+
 /**
  * Validation Variance Test - Runs the same forecast N times to measure LLM variance
  *
@@ -178,10 +190,12 @@ async function runSinglePrediction(
 ): Promise<PredictionRun> {
   console.log(`[VARIANCE-TEST] Running prediction ${runNumber}...`);
 
+  const modelConfig = await loadModelConfig();
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2000,
-    temperature: 1.0, // Use default temperature
+    model: modelConfig.model,
+    max_tokens: modelConfig.max_tokens.validation,
+    temperature: modelConfig.temperature,
+    top_p: modelConfig.top_p,
     messages: [{
       role: 'user',
       content: prompt

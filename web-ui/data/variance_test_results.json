@@ -1,0 +1,524 @@
+{
+  "test_date": "2023-07-15",
+  "num_runs": 5,
+  "method": "Python (validated approach)",
+  "runs": [
+    {
+      "run": 1,
+      "predictions": [
+        {
+          "hour": 10,
+          "wspd_kt": 4.8,
+          "gst_kt": 6.3
+        },
+        {
+          "hour": 11,
+          "wspd_kt": 6.1,
+          "gst_kt": 7.6
+        },
+        {
+          "hour": 12,
+          "wspd_kt": 9.1,
+          "gst_kt": 12.0
+        },
+        {
+          "hour": 13,
+          "wspd_kt": 11.4,
+          "gst_kt": 15.2
+        },
+        {
+          "hour": 14,
+          "wspd_kt": 11.6,
+          "gst_kt": 16.3
+        },
+        {
+          "hour": 15,
+          "wspd_kt": 11.0,
+          "gst_kt": 15.4
+        },
+        {
+          "hour": 16,
+          "wspd_kt": 13.2,
+          "gst_kt": 17.9
+        },
+        {
+          "hour": 17,
+          "wspd_kt": 12.4,
+          "gst_kt": 17.1
+        }
+      ],
+      "avg_wspd_error": 2.04,
+      "avg_gst_error": 2.96,
+      "errors": [
+        {
+          "hour": 10,
+          "wspd_error": 1.9,
+          "gst_error": 0.0
+        },
+        {
+          "hour": 11,
+          "wspd_error": 1.5,
+          "gst_error": 4.0
+        },
+        {
+          "hour": 12,
+          "wspd_error": 0.09999999999999964,
+          "gst_error": 0.8000000000000007
+        },
+        {
+          "hour": 13,
+          "wspd_error": 3.0999999999999996,
+          "gst_error": 4.899999999999999
+        },
+        {
+          "hour": 14,
+          "wspd_error": 1.0,
+          "gst_error": 3.0
+        },
+        {
+          "hour": 15,
+          "wspd_error": 2.0999999999999996,
+          "gst_error": 3.0999999999999996
+        },
+        {
+          "hour": 16,
+          "wspd_error": 4.399999999999999,
+          "gst_error": 5.199999999999999
+        },
+        {
+          "hour": 17,
+          "wspd_error": 2.200000000000001,
+          "gst_error": 2.700000000000001
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "predictions": [
+        {
+          "hour": 10,
+          "wspd_kt": 4.8,
+          "gst_kt": 6.5
+        },
+        {
+          "hour": 11,
+          "wspd_kt": 6.2,
+          "gst_kt": 8.0
+        },
+        {
+          "hour": 12,
+          "wspd_kt": 8.5,
+          "gst_kt": 11.2
+        },
+        {
+          "hour": 13,
+          "wspd_kt": 10.3,
+          "gst_kt": 13.7
+        },
+        {
+          "hour": 14,
+          "wspd_kt": 11.1,
+          "gst_kt": 15.0
+        },
+        {
+          "hour": 15,
+          "wspd_kt": 10.8,
+          "gst_kt": 14.6
+        },
+        {
+          "hour": 16,
+          "wspd_kt": 11.4,
+          "gst_kt": 15.8
+        },
+        {
+          "hour": 17,
+          "wspd_kt": 10.6,
+          "gst_kt": 14.2
+        }
+      ],
+      "avg_wspd_error": 1.4,
+      "avg_gst_error": 1.81,
+      "errors": [
+        {
+          "hour": 10,
+          "wspd_error": 1.9,
+          "gst_error": 0.20000000000000018
+        },
+        {
+          "hour": 11,
+          "wspd_error": 1.3999999999999995,
+          "gst_error": 3.5999999999999996
+        },
+        {
+          "hour": 12,
+          "wspd_error": 0.5,
+          "gst_error": 0.0
+        },
+        {
+          "hour": 13,
+          "wspd_error": 2.0,
+          "gst_error": 3.3999999999999986
+        },
+        {
+          "hour": 14,
+          "wspd_error": 0.5,
+          "gst_error": 1.6999999999999993
+        },
+        {
+          "hour": 15,
+          "wspd_error": 1.9000000000000004,
+          "gst_error": 2.299999999999999
+        },
+        {
+          "hour": 16,
+          "wspd_error": 2.5999999999999996,
+          "gst_error": 3.1000000000000014
+        },
+        {
+          "hour": 17,
+          "wspd_error": 0.40000000000000036,
+          "gst_error": 0.20000000000000107
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "predictions": [
+        {
+          "hour": 10,
+          "wspd_kt": 4.6,
+          "gst_kt": 6.1
+        },
+        {
+          "hour": 11,
+          "wspd_kt": 5.9,
+          "gst_kt": 7.4
+        },
+        {
+          "hour": 12,
+          "wspd_kt": 9.3,
+          "gst_kt": 12.3
+        },
+        {
+          "hour": 13,
+          "wspd_kt": 11.6,
+          "gst_kt": 15.4
+        },
+        {
+          "hour": 14,
+          "wspd_kt": 11.8,
+          "gst_kt": 16.5
+        },
+        {
+          "hour": 15,
+          "wspd_kt": 11.2,
+          "gst_kt": 15.6
+        },
+        {
+          "hour": 16,
+          "wspd_kt": 13.4,
+          "gst_kt": 18.1
+        },
+        {
+          "hour": 17,
+          "wspd_kt": 12.6,
+          "gst_kt": 17.3
+        }
+      ],
+      "avg_wspd_error": 2.19,
+      "avg_gst_error": 3.18,
+      "errors": [
+        {
+          "hour": 10,
+          "wspd_error": 1.6999999999999997,
+          "gst_error": 0.20000000000000018
+        },
+        {
+          "hour": 11,
+          "wspd_error": 1.6999999999999993,
+          "gst_error": 4.199999999999999
+        },
+        {
+          "hour": 12,
+          "wspd_error": 0.3000000000000007,
+          "gst_error": 1.1000000000000014
+        },
+        {
+          "hour": 13,
+          "wspd_error": 3.299999999999999,
+          "gst_error": 5.1
+        },
+        {
+          "hour": 14,
+          "wspd_error": 1.200000000000001,
+          "gst_error": 3.1999999999999993
+        },
+        {
+          "hour": 15,
+          "wspd_error": 2.299999999999999,
+          "gst_error": 3.299999999999999
+        },
+        {
+          "hour": 16,
+          "wspd_error": 4.6,
+          "gst_error": 5.400000000000002
+        },
+        {
+          "hour": 17,
+          "wspd_error": 2.4000000000000004,
+          "gst_error": 2.9000000000000004
+        }
+      ]
+    },
+    {
+      "run": 4,
+      "predictions": [
+        {
+          "hour": 10,
+          "wspd_kt": 4.8,
+          "gst_kt": 6.5
+        },
+        {
+          "hour": 11,
+          "wspd_kt": 6.2,
+          "gst_kt": 8.1
+        },
+        {
+          "hour": 12,
+          "wspd_kt": 8.5,
+          "gst_kt": 11.2
+        },
+        {
+          "hour": 13,
+          "wspd_kt": 10.1,
+          "gst_kt": 13.8
+        },
+        {
+          "hour": 14,
+          "wspd_kt": 11.4,
+          "gst_kt": 15.2
+        },
+        {
+          "hour": 15,
+          "wspd_kt": 12.0,
+          "gst_kt": 16.1
+        },
+        {
+          "hour": 16,
+          "wspd_kt": 12.8,
+          "gst_kt": 17.3
+        },
+        {
+          "hour": 17,
+          "wspd_kt": 11.9,
+          "gst_kt": 16.0
+        }
+      ],
+      "avg_wspd_error": 1.9,
+      "avg_gst_error": 2.39,
+      "errors": [
+        {
+          "hour": 10,
+          "wspd_error": 1.9,
+          "gst_error": 0.20000000000000018
+        },
+        {
+          "hour": 11,
+          "wspd_error": 1.3999999999999995,
+          "gst_error": 3.5
+        },
+        {
+          "hour": 12,
+          "wspd_error": 0.5,
+          "gst_error": 0.0
+        },
+        {
+          "hour": 13,
+          "wspd_error": 1.799999999999999,
+          "gst_error": 3.5
+        },
+        {
+          "hour": 14,
+          "wspd_error": 0.8000000000000007,
+          "gst_error": 1.8999999999999986
+        },
+        {
+          "hour": 15,
+          "wspd_error": 3.0999999999999996,
+          "gst_error": 3.8000000000000007
+        },
+        {
+          "hour": 16,
+          "wspd_error": 4.0,
+          "gst_error": 4.600000000000001
+        },
+        {
+          "hour": 17,
+          "wspd_error": 1.700000000000001,
+          "gst_error": 1.5999999999999996
+        }
+      ]
+    },
+    {
+      "run": 5,
+      "predictions": [
+        {
+          "hour": 10,
+          "wspd_kt": 4.2,
+          "gst_kt": 6.3
+        },
+        {
+          "hour": 11,
+          "wspd_kt": 5.8,
+          "gst_kt": 8.1
+        },
+        {
+          "hour": 12,
+          "wspd_kt": 7.9,
+          "gst_kt": 10.6
+        },
+        {
+          "hour": 13,
+          "wspd_kt": 9.6,
+          "gst_kt": 12.9
+        },
+        {
+          "hour": 14,
+          "wspd_kt": 11.1,
+          "gst_kt": 15.2
+        },
+        {
+          "hour": 15,
+          "wspd_kt": 11.8,
+          "gst_kt": 15.8
+        },
+        {
+          "hour": 16,
+          "wspd_kt": 12.3,
+          "gst_kt": 16.5
+        },
+        {
+          "hour": 17,
+          "wspd_kt": 10.9,
+          "gst_kt": 14.8
+        }
+      ],
+      "avg_wspd_error": 1.64,
+      "avg_gst_error": 2.04,
+      "errors": [
+        {
+          "hour": 10,
+          "wspd_error": 1.3000000000000003,
+          "gst_error": 0.0
+        },
+        {
+          "hour": 11,
+          "wspd_error": 1.7999999999999998,
+          "gst_error": 3.5
+        },
+        {
+          "hour": 12,
+          "wspd_error": 1.0999999999999996,
+          "gst_error": 0.5999999999999996
+        },
+        {
+          "hour": 13,
+          "wspd_error": 1.299999999999999,
+          "gst_error": 2.5999999999999996
+        },
+        {
+          "hour": 14,
+          "wspd_error": 0.5,
+          "gst_error": 1.8999999999999986
+        },
+        {
+          "hour": 15,
+          "wspd_error": 2.9000000000000004,
+          "gst_error": 3.5
+        },
+        {
+          "hour": 16,
+          "wspd_error": 3.5,
+          "gst_error": 3.8000000000000007
+        },
+        {
+          "hour": 17,
+          "wspd_error": 0.7000000000000011,
+          "gst_error": 0.40000000000000036
+        }
+      ]
+    }
+  ],
+  "actual_data": [
+    {
+      "datetime": "2023-07-15T10:00:00-08:00",
+      "hour": 10,
+      "wspd_avg_kt": 2.9,
+      "gst_max_kt": 6.3
+    },
+    {
+      "datetime": "2023-07-15T11:00:00-08:00",
+      "hour": 11,
+      "wspd_avg_kt": 7.6,
+      "gst_max_kt": 11.6
+    },
+    {
+      "datetime": "2023-07-15T12:00:00-08:00",
+      "hour": 12,
+      "wspd_avg_kt": 9.0,
+      "gst_max_kt": 11.2
+    },
+    {
+      "datetime": "2023-07-15T13:00:00-08:00",
+      "hour": 13,
+      "wspd_avg_kt": 8.3,
+      "gst_max_kt": 10.3
+    },
+    {
+      "datetime": "2023-07-15T14:00:00-08:00",
+      "hour": 14,
+      "wspd_avg_kt": 10.6,
+      "gst_max_kt": 13.3
+    },
+    {
+      "datetime": "2023-07-15T15:00:00-08:00",
+      "hour": 15,
+      "wspd_avg_kt": 8.9,
+      "gst_max_kt": 12.3
+    },
+    {
+      "datetime": "2023-07-15T16:00:00-08:00",
+      "hour": 16,
+      "wspd_avg_kt": 8.8,
+      "gst_max_kt": 12.7
+    },
+    {
+      "datetime": "2023-07-15T17:00:00-08:00",
+      "hour": 17,
+      "wspd_avg_kt": 10.2,
+      "gst_max_kt": 14.4
+    },
+    {
+      "datetime": "2023-07-15T18:00:00-08:00",
+      "hour": 18,
+      "wspd_avg_kt": 10.2,
+      "gst_max_kt": 13.5
+    }
+  ],
+  "statistics": {
+    "wspd": {
+      "mean": 1.83,
+      "std_dev": 0.28,
+      "min": 1.4,
+      "max": 2.19,
+      "validated_value": 1.0
+    },
+    "gst": {
+      "mean": 2.48,
+      "std_dev": 0.52,
+      "min": 1.81,
+      "max": 3.18,
+      "validated_value": 1.4
+    }
+  }
+}

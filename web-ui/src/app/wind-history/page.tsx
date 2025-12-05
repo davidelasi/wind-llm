@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Navigation from '../../components/Navigation';
 import {
   LineChart,
@@ -14,22 +14,12 @@ import {
   Legend
 } from 'recharts';
 import { RefreshCw, Wind, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
-import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { format } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
+import { useWindData } from '@/hooks/useWindData';
+import type { DayData } from '@/types/wind-data';
 
-interface WindDataPoint {
-  timestamp: string;
-  date: string;
-  time: string;
-  hour: number;
-  windSpeed: number;
-  gustSpeed: number;
-  windDirection: number;
-  windDirectionText: string;
-  temperature: number;
-  isDangerous: boolean;
-}
-
+// Chart-specific data format
 interface ProcessedDataPoint {
   time: string;
   windSpeed: number | null;
@@ -39,163 +29,64 @@ interface ProcessedDataPoint {
   isEmpty: boolean;
 }
 
-interface DayData {
+interface ChartDayData {
   date: string;
   displayDate: string;
   data: ProcessedDataPoint[];
 }
 
-interface HistoryData {
-  chartData: WindDataPoint[];
-  summary: {
-    avgWindSpeed: number;
-    maxWindSpeed: number;
-    avgGustSpeed: number;
-    maxGustSpeed: number;
-    dangerousGustCount: number;
-    primaryDirection: string;
-    dataPoints: number;
-    dateRange: {
-      start: string;
-      end: string;
-    };
-  };
-}
-
-interface StationHistoryResponse {
-  success: boolean;
-  data?: HistoryData;
-  metadata?: {
-    lastUpdated: string;
-    station: string;
-    location: string;
-    rawRecords: number;
-    chartPoints: number;
-  };
-  error?: string;
-  message?: string;
-}
-
 export default function WindHistoryPage() {
-  const [data, setData] = useState<HistoryData | null>(null);
-  const [metadata, setMetadata] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use unified wind data hook
+  const { data, metadata, isLoading, error, refresh } = useWindData({
+    autoRefresh: true,
+    refreshInterval: 5 * 60 * 1000
+  });
+
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
-  const [availableDays, setAvailableDays] = useState<DayData[]>([]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Process unified DayData into chart format
+  const availableDays: ChartDayData[] = data ? processDataByDays(data) : [];
 
-      const response = await fetch('/api/station-history');
-      const result: StationHistoryResponse = await response.json();
+  // Transform unified DayData into chart-specific format
+  const processDataByDays = (days: DayData[]): ChartDayData[] => {
+    return days.map(day => {
+      // Standard time slots for the chart (11 AM to 6 PM)
+      const standardTimeSlots = [11, 12, 13, 14, 15, 16, 17, 18];
 
-      if (result.success && result.data) {
-        setData(result.data);
-        setMetadata(result.metadata || null);
+      // Create a map of hour -> data point for quick lookup
+      const hourMap = new Map(day.hourlyData.map(point => [point.hour, point]));
 
-        // Process data into daily format
-        const processedDays = processDataByDays(result.data.chartData);
-        setAvailableDays(processedDays);
-      } else {
-        setError(result.message || 'Failed to fetch wind history');
-      }
-    } catch (err) {
-      setError('Network error occurred');
-      console.error('Fetch error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const processedData = standardTimeSlots.map(hour => {
+        const hourData = hourMap.get(hour);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const processDataByDays = (chartData: WindDataPoint[]): DayData[] => {
-    const dailyGroups: { [key: string]: { [hour: number]: WindDataPoint[] } } = {};
-
-    // Group data by day and hour, collecting all readings per hour
-    chartData.forEach(point => {
-      try {
-        const parsedDate = parseISO(point.timestamp);
-        // Use proper timezone conversion that accounts for DST
-        const localDate = toZonedTime(parsedDate, 'America/Los_Angeles');
-        const dayKey = format(localDate, 'yyyy-MM-dd');
-        const hour = localDate.getHours();
-
-        // Include all available hours (not just 11 AM to 5 PM)
-        if (!dailyGroups[dayKey]) {
-          dailyGroups[dayKey] = {};
-        }
-        if (!dailyGroups[dayKey][hour]) {
-          dailyGroups[dayKey][hour] = [];
-        }
-        dailyGroups[dayKey][hour].push(point);
-      } catch (error) {
-        console.error('Error processing data point:', error, point.timestamp);
-      }
-    });
-
-    // Convert to DayData array
-    return Object.keys(dailyGroups)
-      .sort((a, b) => b.localeCompare(a)) // Most recent first
-      .map(dayKey => {
-        const dayData = dailyGroups[dayKey];
-
-        // Get all available hours for this day and sort them
-        const availableHours = Object.keys(dayData).map(h => parseInt(h)).sort((a, b) => a - b);
-
-        console.log(`Day ${dayKey} has data for hours:`, availableHours);
-
-        // Always show 11 AM to 6 PM slots (8 total), with empty slots for missing data
-        const standardTimeSlots = [11, 12, 13, 14, 15, 16, 17, 18]; // 11 AM to 6 PM
-
-        const processedData = standardTimeSlots.map(hour => {
-          const hourlyReadings = dayData[hour];
-
-          if (hourlyReadings && hourlyReadings.length > 0) {
-            // Calculate averages for wind speed and wind direction
-            const avgWindSpeed = hourlyReadings.reduce((sum, reading) => sum + reading.windSpeed, 0) / hourlyReadings.length;
-
-            // For gust speed, take the maximum (not average) - sailors care about peak gust
-            const maxGustSpeed = Math.max(...hourlyReadings.map(reading => reading.gustSpeed));
-
-            // For wind direction, use circular mean (simple average for now)
-            const avgWindDirection = hourlyReadings.reduce((sum, reading) => sum + reading.windDirection, 0) / hourlyReadings.length;
-
-            // Use the wind direction text from the first reading (could be improved)
-            const windDirectionText = hourlyReadings[0].windDirectionText;
-
-            return {
-              time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
-              windSpeed: avgWindSpeed,
-              gustSpeed: maxGustSpeed,
-              windDirection: Math.round(avgWindDirection),
-              windDirectionText: windDirectionText,
-              isEmpty: false
-            };
-          }
-
-          // Empty slot - use null so lines have gaps (connectNulls={false})
+        if (hourData) {
           return {
             time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
-            windSpeed: null,
-            gustSpeed: null,
-            windDirection: null,
-            windDirectionText: 'N',
-            isEmpty: true
+            windSpeed: hourData.windSpeed,
+            gustSpeed: hourData.gustSpeed,
+            windDirection: hourData.windDirection,
+            windDirectionText: hourData.windDirectionText,
+            isEmpty: false
           };
-        });
+        }
 
+        // Empty slot - use null so lines have gaps (connectNulls={false})
         return {
-          date: dayKey,
-          displayDate: formatInTimeZone(parseISO(dayKey + 'T12:00:00'), 'America/Los_Angeles', 'EEEE, MMMM d, yyyy'),
-          data: processedData // Keep all entries including empty ones
+          time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
+          windSpeed: null,
+          gustSpeed: null,
+          windDirection: null,
+          windDirectionText: 'N',
+          isEmpty: true
         };
       });
+
+      return {
+        date: day.date,
+        displayDate: formatInTimeZone(new Date(day.date + 'T12:00:00'), 'America/Los_Angeles', 'EEEE, MMMM d, yyyy'),
+        data: processedData
+      };
+    });
   };
 
   const currentDay = availableDays[currentDayIndex] || null;
@@ -264,7 +155,7 @@ export default function WindHistoryPage() {
     return null;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -283,7 +174,7 @@ export default function WindHistoryPage() {
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Error Loading Data</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={fetchData}
+            onClick={refresh}
             className="bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors"
           >
             Retry
@@ -310,11 +201,11 @@ export default function WindHistoryPage() {
             </div>
 
             <button
-              onClick={fetchData}
-              disabled={loading}
+              onClick={refresh}
+              disabled={isLoading}
               className="p-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>

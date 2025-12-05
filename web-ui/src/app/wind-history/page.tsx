@@ -44,9 +44,6 @@ export default function WindHistoryPage() {
 
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
 
-  // Process unified DayData into chart format
-  const availableDays: ChartDayData[] = data ? processDataByDays(data) : [];
-
   // Transform unified DayData into chart-specific format
   const processDataByDays = (days: DayData[]): ChartDayData[] => {
     return days.map(day => {
@@ -88,6 +85,9 @@ export default function WindHistoryPage() {
       };
     });
   };
+
+  // Process unified DayData into chart format
+  const availableDays: ChartDayData[] = data ? processDataByDays(data) : [];
 
   const currentDay = availableDays[currentDayIndex] || null;
 

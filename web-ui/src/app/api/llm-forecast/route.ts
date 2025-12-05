@@ -61,8 +61,11 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Cache for storing the latest forecast
-let forecastCache: CachedForecast | null = null;
+// Cache for storing the latest forecast (separate by format)
+let forecastCache: { [format: string]: CachedForecast | null } = {
+  json: null,
+  toon: null
+};
 
 // NWS API configuration
 const NWS_COASTAL_FORECAST_URL = 'https://api.weather.gov/products/types/CWF/locations/LOX';
@@ -142,8 +145,8 @@ function parseMultiDayForecast(forecastText: string): DayForecast[] {
     for (const line of lines) {
       const trimmed = line.trim();
 
-      // Check if line starts with a period and a day name
-      const periodMatch = trimmed.match(/^\.?(TODAY|TONIGHT|MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)(\s+NIGHT)?\s*\.{3}(.*)$/i);
+      // Check if line starts with a period and a day name (full or abbreviated)
+      const periodMatch = trimmed.match(/^\.?(TODAY|TONIGHT|MON(?:DAY)?|TUE(?:SDAY)?|WED(?:NESDAY)?|THU(?:RSDAY)?|FRI(?:DAY)?|SAT(?:URDAY)?|SUN(?:DAY)?)(\s+NIGHT)?\s*\.{3}(.*)$/i);
 
       if (periodMatch) {
         // Save previous period if exists
@@ -301,6 +304,56 @@ async function loadTrainingExamples(): Promise<TrainingExample[]> {
   }
 }
 
+// TOON format support functions - Load training examples from TOON files
+async function loadToonTrainingExamples(): Promise<string> {
+  try {
+    // Determine which training file to use based on current month in Pacific timezone
+    const currentDate = new Date();
+    const month = currentDate.toLocaleDateString('en-US', {
+      month: 'short',
+      timeZone: 'America/Los_Angeles'
+    }).toLowerCase();
+
+    // Get current hour in Pacific timezone
+    const pacificHour = parseInt(currentDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'America/Los_Angeles'
+    }).split(':')[0]);
+
+    // Determine forecast number based on Pacific time
+    let forecastNumber = 1; // Default to morning forecast
+    if (pacificHour >= 6 && pacificHour < 14) forecastNumber = 1; // Morning
+    else if (pacificHour >= 14 && pacificHour < 20) forecastNumber = 2; // Afternoon
+    else forecastNumber = 3; // Evening/night
+
+    console.log(`[LLM-FORECAST] Loading TOON format examples for ${month}_fc${forecastNumber}`);
+
+    // Use TOON format from parent data directory
+    const toonDirectory = path.join(
+      process.cwd(),
+      '..',
+      'data',
+      'training',
+      'few_shot_examples_toon'
+    );
+
+    const toonPath = path.join(toonDirectory, `${month}_fc${forecastNumber}_examples.toon`);
+
+    console.log(`[LLM-FORECAST] Loading TOON examples from: ${toonPath}`);
+    const fileContent = await fs.readFile(toonPath, 'utf-8');
+
+    // Count number of lines (examples)
+    const lineCount = fileContent.split('\n').filter(line => line.trim().length > 0).length;
+    console.log(`[LLM-FORECAST] Loaded ${lineCount} TOON training examples`);
+
+    return fileContent;
+  } catch (error) {
+    console.error('Error loading TOON training examples:', error);
+    throw error;
+  }
+}
+
 function createFewShotPrompt(dayForecasts: string[], warnings: string[], examples: TrainingExample[]): string {
   const systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
 
@@ -377,7 +430,9 @@ Here are ${examples.length} examples showing how NWS multi-day forecasts transla
   });
 
   let currentForecastPrompt = `
-Now predict the wind conditions for the next 5 days based on the following NWS forecast:
+========================================
+NOW PREDICT based on the following NWS forecast:
+========================================
 
 `;
 
@@ -394,7 +449,10 @@ Now predict the wind conditions for the next 5 days based on the following NWS f
     }
   });
 
-  currentForecastPrompt += `Return your prediction for ALL 5 days in this exact JSON format:
+  currentForecastPrompt += `
+========================================
+CRITICAL: Return your prediction in JSON format.
+Return predictions for ALL 5 days in this EXACT JSON structure:
 {
   "day_0": [
     {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
@@ -421,9 +479,110 @@ Now predict the wind conditions for the next 5 days based on the following NWS f
   ]
 }
 
-Respond with ONLY the JSON, no other text.`;
+========================================
+CRITICAL REMINDER:
+- Training examples above were in JSON format
+- Your OUTPUT must also be in JSON format (curly braces and quotes)
+- Respond with ONLY the JSON object, no explanations, no narrative text
+========================================`;
 
   return systemPrompt + examplesText + currentForecastPrompt;
+}
+
+function createToonFewShotPrompt(dayForecasts: string[], warnings: string[], toonExamples: string): string {
+  const systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
+
+Your task is to predict hourly wind speed (WSPD), gust speed (GST), and wind direction for 10 AM - 6 PM PST for the next 5 days based on NWS coastal forecasts.
+
+Key requirements:
+- Predict for exactly 9 hours per day: 10 AM, 11 AM, 12 PM, 1 PM, 2 PM, 3 PM, 4 PM, 5 PM, 6 PM (PST)
+- Return wind speeds in knots (kt) with 1 decimal place
+- Return wind direction in degrees (0-360) as integer
+- Consider that this time window is critical for sailing/surfing activities
+- Account for typical thermal wind patterns in the LA area
+- Pay attention to weather warnings and advisories
+
+IMPORTANT: The training examples below are in TOON format (a compact pipe-separated notation), but you MUST return your predictions in JSON format.
+
+Here are training examples in TOON format (Text Object Optimized Notation):
+
+TOON FORMAT SCHEMA (23 pipe-separated fields):
+ISSUED|ISSUANCE_TIME|NUMBER|COMPLETE|WARNINGS|D0_DAY|D0_NIGHT|D1_DAY|D1_NIGHT|D2_DAY|D2_NIGHT|D3_DAY|D3_NIGHT|D4_DAY|D0_DATE|D0_WSPD|D0_GST|D1_DATE|D1_WSPD|D1_GST|D2_DATE|D2_WSPD|D2_GST
+
+Field descriptions:
+- ISSUED: Forecast issue timestamp
+- ISSUANCE_TIME: Time of day (e.g., "02:09")
+- NUMBER: Forecast number (1-4)
+- COMPLETE: Data completeness flag
+- WARNINGS: Weather warnings (or NULL)
+- D0_DAY through D4_DAY: Forecast text for each day/night period
+- D0_DATE, D1_DATE, D2_DATE: Actual observation dates
+- D0_WSPD, D1_WSPD, D2_WSPD: Actual average wind speeds (8 comma-separated hourly values in knots for 11AM-6PM)
+- D0_GST, D1_GST, D2_GST: Actual maximum gust speeds (8 comma-separated hourly values in knots for 11AM-6PM)
+
+TRAINING EXAMPLES (in TOON format):
+${toonExamples}
+
+`;
+
+  let currentForecastPrompt = `
+========================================
+NOW PREDICT based on the following NWS forecast:
+========================================
+
+`;
+
+  // Add warnings if present
+  if (warnings.length > 0) {
+    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
+  }
+
+  // Add forecast for each day
+  currentForecastPrompt += `FORECAST:\n`;
+  dayForecasts.forEach((forecast, index) => {
+    if (forecast) {
+      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
+    }
+  });
+
+  currentForecastPrompt += `
+========================================
+CRITICAL: Return your prediction in JSON format (NOT TOON format).
+Return predictions for ALL 5 days in this EXACT JSON structure:
+{
+  "day_0": [
+    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
+    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
+    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
+    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
+    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
+    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
+    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
+    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
+    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
+  ],
+  "day_1": [
+    ... (9 hours for day 1)
+  ],
+  "day_2": [
+    ... (9 hours for day 2)
+  ],
+  "day_3": [
+    ... (9 hours for day 3)
+  ],
+  "day_4": [
+    ... (9 hours for day 4)
+  ]
+}
+
+========================================
+CRITICAL REMINDER:
+- Training examples above were in TOON format (pipe-separated)
+- Your OUTPUT must be in JSON format (curly braces and quotes)
+- Respond with ONLY the JSON object, no explanations, no TOON format
+========================================`;
+
+  return systemPrompt + currentForecastPrompt;
 }
 
 function getWindDirectionText(degrees: number): string {
@@ -432,9 +591,10 @@ function getWindDirectionText(degrees: number): string {
   return directions[index];
 }
 
-async function generateForecastWithLLM(forecastText: string): Promise<ForecastPrediction[][] | null> {
+async function generateForecastWithLLM(forecastText: string, format: string = 'json'): Promise<ForecastPrediction[][] | null> {
   try {
     console.log('[LLM-FORECAST] Parsing multi-day NWS forecast...');
+    console.log(`[LLM-FORECAST] Raw forecast text: ${forecastText.substring(0, 500)}`);
     const parsedForecasts = parseMultiDayForecast(forecastText);
     console.log(`[LLM-FORECAST] Parsed ${parsedForecasts.length} forecast periods`);
 
@@ -456,17 +616,35 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
       }
     }
 
-    console.log('[LLM-FORECAST] Loading training examples (JSON format)...');
-    const examples = await loadTrainingExamples();
-    console.log(`[LLM-FORECAST] Loaded ${examples.length} training examples from JSON format`);
+    console.log(`[LLM-FORECAST] Loading training examples (${format.toUpperCase()} format)...`);
+    let prompt: string;
 
-    if (examples.length === 0) {
-      throw new Error('No training examples loaded - check file paths and format');
+    if (format === 'toon') {
+      // Load TOON format examples as raw text
+      const toonExamples = await loadToonTrainingExamples();
+      const lineCount = toonExamples.split('\n').filter(line => line.trim().length > 0).length;
+      console.log(`[LLM-FORECAST] Loaded ${lineCount} TOON training examples`);
+
+      if (lineCount === 0) {
+        throw new Error('No TOON training examples loaded - check file paths');
+      }
+
+      console.log('[LLM-FORECAST] Creating few-shot prompt with TOON format examples...');
+      prompt = createToonFewShotPrompt(dayForecasts, warnings, toonExamples);
+      console.log(`[LLM-FORECAST] TOON prompt created, length: ${prompt.length} characters`);
+    } else {
+      // Load JSON format examples (default)
+      const examples = await loadTrainingExamples();
+      console.log(`[LLM-FORECAST] Loaded ${examples.length} JSON training examples`);
+
+      if (examples.length === 0) {
+        throw new Error('No JSON training examples loaded - check file paths and format');
+      }
+
+      console.log('[LLM-FORECAST] Creating few-shot prompt with JSON format examples...');
+      prompt = createFewShotPrompt(dayForecasts, warnings, examples);
+      console.log(`[LLM-FORECAST] JSON prompt created, length: ${prompt.length} characters`);
     }
-
-    console.log('[LLM-FORECAST] Creating few-shot prompt with multi-day context and warnings...');
-    const prompt = createFewShotPrompt(dayForecasts, warnings, examples);
-    console.log(`[LLM-FORECAST] Prompt created, length: ${prompt.length} characters`);
 
     console.log('[LLM-FORECAST] Calling Claude API for 5-day forecast prediction...');
     const modelConfig = await loadModelConfig();
@@ -499,10 +677,14 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
 
     const responseText = response.content[0].text.trim();
     console.log('[LLM-FORECAST] Claude response received, parsing...');
+    console.log(`[LLM-FORECAST] Response length: ${responseText.length} characters`);
+    console.log(`[LLM-FORECAST] Response preview (first 500 chars): ${responseText.substring(0, 500)}`);
 
     // Parse the JSON response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error('[LLM-FORECAST ERROR] No JSON found in Claude response!');
+      console.error(`[LLM-FORECAST ERROR] Full response: ${responseText.substring(0, 2000)}`);
       throw new Error('No JSON found in Claude response');
     }
 
@@ -521,19 +703,21 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
         continue;
       }
 
-      const formattedPredictions: ForecastPrediction[] = dayPredictions.map((p: any) => {
-        const ampm = p.hour >= 12 ? 'PM' : 'AM';
-        const displayHour = p.hour > 12 ? p.hour - 12 : p.hour === 0 ? 12 : p.hour;
+      const formattedPredictions: ForecastPrediction[] = dayPredictions
+        .filter((p: any) => p && typeof p === 'object' && p.wspd_kt !== undefined && p.gst_kt !== undefined && p.wdir_deg !== undefined)
+        .map((p: any) => {
+          const ampm = p.hour >= 12 ? 'PM' : 'AM';
+          const displayHour = p.hour > 12 ? p.hour - 12 : p.hour === 0 ? 12 : p.hour;
 
-        return {
-          time: `${displayHour} ${ampm}`,
-          windSpeed: parseFloat(p.wspd_kt.toFixed(1)),
-          gustSpeed: parseFloat(p.gst_kt.toFixed(1)),
-          windDirection: Math.round(p.wdir_deg),
-          windDirectionText: getWindDirectionText(p.wdir_deg),
-          isEmpty: false
-        };
-      });
+          return {
+            time: `${displayHour} ${ampm}`,
+            windSpeed: parseFloat(p.wspd_kt.toFixed(1)),
+            gustSpeed: parseFloat(p.gst_kt.toFixed(1)),
+            windDirection: Math.round(p.wdir_deg),
+            windDirectionText: getWindDirectionText(p.wdir_deg),
+            isEmpty: false
+          };
+        });
 
       allDays.push(formattedPredictions);
       console.log(`[LLM-FORECAST] Day ${day}: ${formattedPredictions.length} hourly predictions`);
@@ -594,6 +778,9 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const forceUpdate = url.searchParams.get('force') === 'true';
     const useTestData = url.searchParams.get('test') === 'true';
+    const format = url.searchParams.get('format') || 'json'; // 'json' or 'toon'
+
+    console.log(`[LLM-FORECAST] Request format: ${format}`);
 
     // If test mode, return placeholder data
     if (useTestData) {
@@ -608,17 +795,18 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if we have cached forecast that's still valid
-    if (!forceUpdate && forecastCache && new Date() < new Date(forecastCache.expiresAt)) {
-      console.log('Returning cached forecast');
+    // Check if we have cached forecast that's still valid for this format
+    if (!forceUpdate && forecastCache[format] && new Date() < new Date(forecastCache[format]!.expiresAt)) {
+      console.log(`Returning cached forecast for format: ${format}`);
       return NextResponse.json({
         success: true,
         data: {
-          predictions: forecastCache.predictions,
+          predictions: forecastCache[format]!.predictions,
           isLLMGenerated: true,
-          lastUpdated: forecastCache.generatedAt,
-          nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache'
+          lastUpdated: forecastCache[format]!.generatedAt,
+          nwsForecastTime: forecastCache[format]!.nwsForecastTime,
+          source: 'cache',
+          format: format.toUpperCase()
         }
       });
     }
@@ -630,17 +818,18 @@ export async function GET(request: NextRequest) {
 
     if (!nwsForecast) {
       logError('NWS forecast fetch failed', 'No forecast data returned');
-      // If we have cached data, return it with a warning
-      if (forecastCache) {
+      // If we have cached data for this format, return it with a warning
+      if (forecastCache[format]) {
         return NextResponse.json({
           success: true,
           data: {
-            predictions: forecastCache.predictions,
+            predictions: forecastCache[format]!.predictions,
             isLLMGenerated: true,
-            lastUpdated: forecastCache.generatedAt,
-            nwsForecastTime: forecastCache.nwsForecastTime,
+            lastUpdated: forecastCache[format]!.generatedAt,
+            nwsForecastTime: forecastCache[format]!.nwsForecastTime,
             source: 'cache_fallback',
-            warning: 'Unable to fetch latest NWS forecast, using cached data'
+            warning: 'Unable to fetch latest NWS forecast, using cached data',
+            format: format.toUpperCase()
           }
         });
       }
@@ -668,46 +857,49 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Check if this is a newer forecast than what we have cached
-    if (forecastCache &&
-        forecastCache.nwsForecastTime === nwsForecast.issuedTime &&
+    // Check if this is a newer forecast than what we have cached for this format
+    if (forecastCache[format] &&
+        forecastCache[format]!.nwsForecastTime === nwsForecast.issuedTime &&
         !forceUpdate) {
-      console.log('NWS forecast unchanged, returning cached prediction');
+      console.log(`NWS forecast unchanged for format ${format}, returning cached prediction`);
       return NextResponse.json({
         success: true,
         data: {
-          predictions: forecastCache.predictions,
+          predictions: forecastCache[format]!.predictions,
           isLLMGenerated: true,
-          lastUpdated: forecastCache.generatedAt,
-          nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache_same_forecast'
+          lastUpdated: forecastCache[format]!.generatedAt,
+          nwsForecastTime: forecastCache[format]!.nwsForecastTime,
+          source: 'cache_same_forecast',
+          format: format.toUpperCase()
         }
       });
     }
 
     // Generate new forecast with LLM
-    console.log('[LLM-FORECAST] Generating 5-day forecast with LLM (JSON format, multi-day parsing, warnings)...');
+    console.log(`[LLM-FORECAST] Generating 5-day forecast with LLM (${format.toUpperCase()} format, multi-day parsing, warnings)...`);
     console.log('[LLM-FORECAST] Inner waters forecast text length:', innerWatersForecast.length);
-    const predictions = await generateForecastWithLLM(innerWatersForecast);
+    const predictions = await generateForecastWithLLM(innerWatersForecast, format);
 
     if (!predictions) {
       logError('LLM prediction generation failed', { forecastText: innerWatersForecast?.substring(0, 200) + '...' });
-      // If we have cached data, return it with a warning
-      if (forecastCache) {
+      // If we have cached data for this format, return it with a warning
+      if (forecastCache[format]) {
         await sendErrorEmail('LLM forecast generation failed', {
           forecastText: innerWatersForecast,
+          format: format,
           timestamp: new Date().toISOString()
         });
 
         return NextResponse.json({
           success: true,
           data: {
-            predictions: forecastCache.predictions,
+            predictions: forecastCache[format]!.predictions,
             isLLMGenerated: true,
-            lastUpdated: forecastCache.generatedAt,
-            nwsForecastTime: forecastCache.nwsForecastTime,
+            lastUpdated: forecastCache[format]!.generatedAt,
+            nwsForecastTime: forecastCache[format]!.nwsForecastTime,
             source: 'cache_llm_failed',
-            warning: 'LLM forecast generation failed, using cached data'
+            warning: 'LLM forecast generation failed, using cached data',
+            format: format.toUpperCase()
           }
         });
       }
@@ -727,7 +919,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from now
 
-    forecastCache = {
+    forecastCache[format] = {
       predictions,
       nwsForecastText: innerWatersForecast,
       nwsForecastTime: nwsForecast.issuedTime,
@@ -735,7 +927,7 @@ export async function GET(request: NextRequest) {
       expiresAt: expiresAt.toISOString()
     };
 
-    console.log('Successfully generated and cached new forecast');
+    console.log(`Successfully generated and cached new forecast for format: ${format}`);
 
     return NextResponse.json({
       success: true,
@@ -745,7 +937,7 @@ export async function GET(request: NextRequest) {
         lastUpdated: now.toISOString(),
         nwsForecastTime: nwsForecast.issuedTime,
         source: 'fresh_llm',
-        format: 'JSON' // Production uses JSON format with multi-day training
+        format: format.toUpperCase()
       }
     });
 

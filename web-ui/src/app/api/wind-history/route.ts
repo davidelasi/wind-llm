@@ -128,13 +128,13 @@ function convertToWindDataPoints(measurements: RawWindMeasurement[]): WindDataPo
 
     // Calculate averages and maximums
     const windSpeeds = hourMeasurements.map(m => m.windSpeed!);
-    const gustSpeeds = hourMeasurements.map(m => m.gustSpeed);
+    const gustSpeeds = hourMeasurements.filter(m => m.gustSpeed !== null).map(m => m.gustSpeed!);
     const directions = hourMeasurements.map(m => m.windDirection!);
-    const pressures = hourMeasurements.filter(m => m.pressure > 0).map(m => m.pressure);
-    const temps = hourMeasurements.filter(m => m.airTemp !== 0).map(m => m.airTemp);
+    const pressures = hourMeasurements.filter(m => m.pressure !== null && m.pressure > 0).map(m => m.pressure!);
+    const temps = hourMeasurements.filter(m => m.airTemp !== null && m.airTemp !== 0).map(m => m.airTemp!);
 
     const avgWindSpeed = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
-    const maxGust = Math.max(...gustSpeeds);
+    const maxGust = gustSpeeds.length > 0 ? Math.max(...gustSpeeds) : 0;
     const avgDirection = directions.reduce((a, b) => a + b, 0) / directions.length;
     const avgPressure = pressures.length > 0 ? pressures.reduce((a, b) => a + b, 0) / pressures.length : 0;
     const avgTemp = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;

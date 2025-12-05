@@ -299,8 +299,20 @@ export default function FormatComparisonPage() {
       );
     }
 
+    // Check for valid wind data before calculations
+    if (typeof payload.windSpeed !== 'number' || typeof payload.gustSpeed !== 'number' ||
+        payload.windSpeed == null || payload.gustSpeed == null ||
+        payload.gustSpeed === 0) {
+      return null;
+    }
+
     const windHeight = height * (payload.windSpeed / payload.gustSpeed);
     const gustHeight = height - windHeight;
+
+    // Additional NaN check
+    if (isNaN(windHeight) || isNaN(gustHeight)) {
+      return null;
+    }
 
     return (
       <g>

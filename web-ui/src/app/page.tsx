@@ -623,8 +623,20 @@ export default function Home() {
       );
     }
 
+    // Check for valid wind data before calculations
+    if (typeof payload.windSpeed !== 'number' || typeof payload.gustSpeed !== 'number' ||
+        payload.windSpeed == null || payload.gustSpeed == null ||
+        payload.gustSpeed === 0) {
+      return null;
+    }
+
     const windHeight = height * (payload.windSpeed / payload.gustSpeed);
     const gustHeight = height - windHeight;
+
+    // Additional NaN check
+    if (isNaN(windHeight) || isNaN(gustHeight)) {
+      return null;
+    }
 
     return (
       <g>
@@ -858,69 +870,7 @@ export default function Home() {
             </ResponsiveContainer>
           </div>
 
-          {/* Comparison Results Section removed - now using TOON only */}
-          {false && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-800 mb-3">📊 Format Comparison Results</h4>
-
-              {(() => {
-                const jsonDay = jsonForecastData[selectedForecastDay] || [];
-                const toonDay = toonForecastData[selectedForecastDay] || [];
-
-                // Calculate differences
-                let identical = true;
-                let maxWindDiff = 0;
-                let maxGustDiff = 0;
-                let differences: Array<{hour: string, windDiff: number, gustDiff: number}> = [];
-
-                jsonDay.forEach((jsonHour: any, i: number) => {
-                  const toonHour = toonDay[i];
-                  if (jsonHour && toonHour) {
-                    const windDiff = Math.abs(jsonHour.windSpeed - toonHour.windSpeed);
-                    const gustDiff = Math.abs(jsonHour.gustSpeed - toonHour.gustSpeed);
-
-                    if (windDiff > 0.01 || gustDiff > 0.01) {
-                      identical = false;
-                      maxWindDiff = Math.max(maxWindDiff, windDiff);
-                      maxGustDiff = Math.max(maxGustDiff, gustDiff);
-                      differences.push({
-                        hour: jsonHour.time,
-                        windDiff,
-                        gustDiff
-                      });
-                    }
-                  }
-                });
-
-                return (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium text-green-700 mb-2">
-                        {identical ? '✅ Results Identical!' : '⚠️ Differences Found'}
-                      </div>
-
-                      {!identical && (
-                        <div className="space-y-1 text-xs">
-                          <div>Max Wind Diff: {maxWindDiff.toFixed(1)} kt</div>
-                          <div>Max Gust Diff: {maxGustDiff.toFixed(1)} kt</div>
-                          <div>Hours with differences: {differences.length}/8</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="font-medium text-blue-700 mb-2">Token Usage</div>
-                      <div className="space-y-1 text-xs">
-                        <div>JSON: ~800 tokens per example</div>
-                        <div>TOON: ~100 tokens per example</div>
-                        <div className="text-green-600 font-medium">Savings: ~96% reduction</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
+          {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
 
           {/* DEBUG INFO */}
           <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">

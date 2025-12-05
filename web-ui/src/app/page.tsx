@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import Navigation from '../components/Navigation';
 import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
+import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
+import { addDays } from 'date-fns';
 import {
   BarChart,
   Bar,
@@ -488,24 +490,16 @@ export default function Home() {
     console.log('[DEBUG] Available dates:', actualWindData.map((d: any) => d.date));
 
     // Calculate the date for the selected day in PST
-    const today = new Date();
+    const now = new Date();
 
-    // Convert to PST by getting the localized date string
-    const pstDateString = today.toLocaleDateString('en-US', {
-      timeZone: PACIFIC_TIMEZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+    // Get current Pacific time as a proper zoned Date object
+    const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
 
-    // Parse the MM/DD/YYYY format to YYYY-MM-DD
-    const [month, day, year] = pstDateString.split('/');
-    const todayPST = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    // Add the selected day offset using date-fns
+    const targetPacific = addDays(nowPacific, selectedForecastDay);
 
-    // Add the selected day offset
-    const targetDate = new Date(todayPST);
-    targetDate.setDate(todayPST.getDate() + selectedForecastDay);
-    const dateKey = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Format to YYYY-MM-DD in Pacific timezone
+    const dateKey = formatInTimeZone(targetPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
 
     console.log('[DEBUG] Selected forecast day:', selectedForecastDay);
     console.log('[DEBUG] Target date key:', dateKey);
@@ -967,18 +961,10 @@ export default function Home() {
                   <p>Available dates: {actualWindData.map((d: any) => d.date).join(', ')}</p>
                   <p>Selected forecast day: Day {selectedForecastDay} ({['Today', 'Tomorrow', 'D+2', 'D+3', 'D+4'][selectedForecastDay]})</p>
                   <p>Looking for date: {(() => {
-                    const today = new Date();
-                    const pstDateString = today.toLocaleDateString('en-US', {
-                      timeZone: PACIFIC_TIMEZONE,
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit'
-                    });
-                    const [month, day, year] = pstDateString.split('/');
-                    const todayPST = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                    const targetDate = new Date(todayPST);
-                    targetDate.setDate(todayPST.getDate() + selectedForecastDay);
-                    return targetDate.toISOString().split('T')[0];
+                    const now = new Date();
+                    const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
+                    const targetPacific = addDays(nowPacific, selectedForecastDay);
+                    return formatInTimeZone(targetPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
                   })()}</p>
                   <p>Match found: {actualWindForDay ? 'Yes' : 'No'}</p>
                   {actualWindForDay && (

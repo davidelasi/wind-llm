@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { convertGMTtoPacific, PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface RawWindData {
   year: number;
@@ -112,8 +113,10 @@ function aggregateHourlyData(rawData: RawWindData[]): DailyWindData[] {
 
   // Group by date (Pacific timezone - handles DST)
   rawData.forEach(record => {
-    const pacificDate = convertGMTtoPacific(record.year, record.month, record.day, record.hour, record.minute);
-    const dateKey = pacificDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Create proper UTC date from GMT components
+    const gmtDate = new Date(Date.UTC(record.year, record.month - 1, record.day, record.hour, record.minute));
+    // Format directly to Pacific timezone date string (YYYY-MM-DD)
+    const dateKey = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
 
     if (!dailyGroups[dateKey]) {
       dailyGroups[dateKey] = [];

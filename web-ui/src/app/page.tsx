@@ -132,8 +132,12 @@ export default function Home() {
   const [useLlmForecast, setUseLlmForecast] = useState(true);
   const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
 
-  // Use unified wind data hook
+  // Use unified wind data hook for current conditions
   const { data: actualWindData, isLoading: actualWindLoading } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
+
+  // State for cached historical wind data
+  const [historicalWindData, setHistoricalWindData] = useState<any>(null);
+  const [historicalWindLoading, setHistoricalWindLoading] = useState(false);
 
   const fetchWindData = async () => {
     try {
@@ -203,6 +207,30 @@ export default function Home() {
     }
   };
 
+  // Fetch historical wind data using cached wind-history API
+  const fetchHistoricalWindData = async () => {
+    try {
+      setHistoricalWindLoading(true);
+      console.log('[HISTORICAL-WIND] Fetching cached historical wind data...');
+
+      const response = await fetch('/api/wind-history');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        console.log('[HISTORICAL-WIND] Retrieved cached wind history:', data.data.length, 'days');
+        setHistoricalWindData(data.data);
+      } else {
+        console.error('[HISTORICAL-WIND] Failed to fetch historical wind data');
+        setHistoricalWindData([]);
+      }
+    } catch (err) {
+      console.error('[HISTORICAL-WIND] Error fetching historical wind data:', err);
+      setHistoricalWindData([]);
+    } finally {
+      setHistoricalWindLoading(false);
+    }
+  };
+
   const fetchLlmForecast = async (forceUpdate = false) => {
     try {
       setLlmForecastLoading(true);
@@ -252,12 +280,13 @@ export default function Home() {
     fetchWindData();
     fetchForecastData();
     fetchLlmForecast();
-    // Note: actualWindData now managed by useWindData hook
+    fetchHistoricalWindData(); // Load cached historical data on startup
 
     // Set up different refresh intervals
     const windInterval = setInterval(fetchWindData, 5 * 60 * 1000); // Refresh every 5 minutes
     const forecastInterval = setInterval(fetchForecastData, 60 * 60 * 1000); // Refresh every 1 hour
     const llmForecastInterval = setInterval(() => fetchLlmForecast(false), 60 * 60 * 1000); // Check for new forecasts every hour
+    const historicalInterval = setInterval(fetchHistoricalWindData, 60 * 60 * 1000); // Refresh historical data hourly
     // Note: actualWindData refresh now handled by useWindData hook
     const ageUpdateInterval = setInterval(updateDataAges, 60 * 1000); // Update ages every minute
 
@@ -265,6 +294,7 @@ export default function Home() {
       clearInterval(windInterval);
       clearInterval(forecastInterval);
       clearInterval(llmForecastInterval);
+      clearInterval(historicalInterval);
       clearInterval(ageUpdateInterval);
     };
   }, [useLlmForecast]);
@@ -465,47 +495,79 @@ export default function Home() {
 
   const currentForecastData = getCurrentForecastData();
 
-  // Get actual wind data for the selected day (using unified data structure)
+  // Get actual wind data for the selected day (supporting both current and historical data)
   const getActualWindForDay = () => {
-    if (!actualWindData || actualWindData.length === 0) {
-      console.log('[DEBUG] No actual wind data available');
-      return null;
-    }
-
-    console.log('[DEBUG] Actual wind data:', actualWindData);
-    console.log('[DEBUG] Number of days in actual data:', actualWindData.length);
-    console.log('[DEBUG] Available dates:', actualWindData.map((d: DayData) => d.date));
-
     // Calculate the date for the selected day in PST
     const now = new Date();
-
-    // Get current Pacific time as a proper zoned Date object
     const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
-
-    // Add the selected day offset using date-fns
     const targetPacific = addDays(nowPacific, selectedForecastDay);
-
-    // Format to YYYY-MM-DD in Pacific timezone
     const dateKey = formatInTimeZone(targetPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
 
     console.log('[DEBUG] Selected forecast day:', selectedForecastDay);
     console.log('[DEBUG] Target date key:', dateKey);
 
-    // Find the matching day in actual wind data
-    const dayData = actualWindData.find((day: DayData) => day.date === dateKey);
+    // For historical days (past), use cached wind history data
+    if (selectedForecastDay < 0) {
+      if (!historicalWindData || historicalWindData.length === 0) {
+        console.log('[DEBUG] No historical wind data available');
+        // Try to fetch historical data if not available
+        fetchHistoricalWindData();
+        return null;
+      }
 
-    if (!dayData) {
-      console.log('[DEBUG] No matching day found for date:', dateKey);
-      return null;
+      console.log('[DEBUG] Using historical wind data:', historicalWindData);
+      console.log('[DEBUG] Available historical dates:', historicalWindData.map((d: DayData) => d.date));
+
+      // Find the matching day in historical wind data
+      const dayData = historicalWindData.find((day: DayData) => day.date === dateKey);
+
+      if (!dayData) {
+        console.log('[DEBUG] No matching historical day found for date:', dateKey);
+        return null;
+      }
+
+      if (!dayData.hourlyData) {
+        console.log('[DEBUG] Historical day found but no hourly data');
+        return null;
+      }
+
+      console.log('[DEBUG] Found historical day data:', dayData);
+      console.log('[DEBUG] Historical hours available:', dayData.hourlyData.map((h: any) => h.hour));
+    } else {
+      // For current and future days, use live actual wind data
+      if (!actualWindData || actualWindData.length === 0) {
+        console.log('[DEBUG] No live actual wind data available for current/future day');
+        return null;
+      }
+
+      console.log('[DEBUG] Actual wind data:', actualWindData);
+      console.log('[DEBUG] Number of days in actual data:', actualWindData?.length || 0);
+      console.log('[DEBUG] Available dates:', actualWindData?.map((d: DayData) => d.date).join(', ') || 'None');
+
+      // Find the matching day in actual wind data
+      const dayData = actualWindData.find((day: DayData) => day.date === dateKey);
+
+      if (!dayData) {
+        console.log('[DEBUG] No matching day found for date:', dateKey);
+        return null;
+      }
+
+      if (!dayData.hourlyData) {
+        console.log('[DEBUG] Day found but no hourly data');
+        return null;
+      }
+
+      console.log('[DEBUG] Found live day data:', dayData);
+      console.log('[DEBUG] Live hours available:', dayData.hourlyData.map((h: any) => h.hour));
     }
 
-    if (!dayData.hourlyData) {
-      console.log('[DEBUG] Day found but no hourly data');
-      return null;
+    // Common logic for both data sources
+    let dayData;
+    if (selectedForecastDay < 0) {
+      dayData = historicalWindData.find((day: DayData) => day.date === dateKey)!;
+    } else {
+      dayData = actualWindData.find((day: DayData) => day.date === dateKey)!;
     }
-
-    console.log('[DEBUG] Found day data:', dayData);
-    console.log('[DEBUG] Hours available:', dayData.hourlyData.map(h => h.hour));
 
     // Map hourly data to match forecast format (11 AM to 6 PM)
     const timeSlots = ['11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
@@ -520,14 +582,14 @@ export default function Home() {
       const hourData = dayData.hourlyData.find(h => h.hour === hour);
 
       if (hourData) {
-        console.log(`[DEBUG] Found data for ${timeSlot}:`, hourData);
+        console.log(`[DEBUG] Found ${(selectedForecastDay < 0 ? 'historical' : 'live')} data for ${timeSlot}:`, hourData);
         return {
           time: timeSlot,
-          actualWindSpeed: hourData.windSpeed,
-          actualGustSpeed: hourData.gustSpeed
+          actualWindSpeed: hourData.windSpeedAvgKt || hourData.windSpeed,  // Support both field names
+          actualGustSpeed: hourData.gustSpeedMaxKt || hourData.gustSpeed  // Support both field names
         };
       }
-      console.log(`[DEBUG] No data for ${timeSlot}`);
+      console.log(`[DEBUG] No ${(selectedForecastDay < 0 ? 'historical' : 'live')} data for ${timeSlot}`);
       return {
         time: timeSlot,
         actualWindSpeed: null,

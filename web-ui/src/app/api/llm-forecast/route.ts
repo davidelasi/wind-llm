@@ -301,170 +301,6 @@ async function loadTrainingExamples(): Promise<TrainingExample[]> {
   }
 }
 
-
-
-NOW PREDICT based on the following NWS forecast:
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-CRITICAL: Return your prediction in JSON format.
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-CRITICAL REMINDER:
-- Training examples above were in JSON format
-- Your OUTPUT must also be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no narrative text
-========================================`;
-
-NOW PREDICT based on the following NWS forecast:
-
-NOW PREDICT based on the following NWS forecast:
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-CRITICAL: Return your prediction in JSON format.
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-CRITICAL REMINDER:
-- Training examples above were in JSON format
-- Your OUTPUT must also be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no narrative text
-========================================`;
-
-NOW PREDICT based on the following NWS forecast:
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-CRITICAL: Return your prediction in JSON format (NOT TOON format).
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-CRITICAL REMINDER:
-- Training examples above were in TOON format (pipe-separated)
-- Your OUTPUT must be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no TOON format
-========================================`;
-
-  return systemPrompt + currentForecastPrompt;
-}
-  return systemPrompt + examplesText + currentForecastPrompt;
-}
 function createFewShotPrompt(dayForecasts: string[], warnings: string[], examples: TrainingExample[]): string {
   const systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
 
@@ -541,60 +377,6 @@ Here are ${examples.length} examples showing how NWS multi-day forecasts transla
   });
 
   let currentForecastPrompt = `
-NOW PREDICT based on the following NWS forecast:
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-CRITICAL: Return your prediction in JSON format.
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-CRITICAL REMINDER:
-- Training examples above were in JSON format
-- Your OUTPUT must also be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no narrative text
-========================================`;
-
-  return systemPrompt + examplesText + currentForecastPrompt;
-}
 ========================================
 NOW PREDICT based on the following NWS forecast:
 ========================================
@@ -651,119 +433,7 @@ CRITICAL REMINDER:
 - Respond with ONLY the JSON object, no explanations, no narrative text
 ========================================`;
 
-NOW PREDICT based on the following NWS forecast:
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-CRITICAL: Return your prediction in JSON format (NOT TOON format).
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-CRITICAL REMINDER:
-- Training examples above were in TOON format (pipe-separated)
-- Your OUTPUT must be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no TOON format
-========================================`;
-
-  return systemPrompt + currentForecastPrompt;
-}
   return systemPrompt + examplesText + currentForecastPrompt;
-}
-========================================
-NOW PREDICT based on the following NWS forecast:
-========================================
-
-`;
-
-  // Add warnings if present
-  if (warnings.length > 0) {
-    currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
-  }
-
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
-
-  currentForecastPrompt += `
-========================================
-CRITICAL: Return your prediction in JSON format (NOT TOON format).
-Return predictions for ALL 5 days in this EXACT JSON structure:
-{
-  "day_0": [
-    {"hour": 10, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 11, "wspd_kt": 12.5, "gst_kt": 16.2, "wdir_deg": 225},
-    {"hour": 12, "wspd_kt": 13.1, "gst_kt": 17.8, "wdir_deg": 230},
-    {"hour": 13, "wspd_kt": 14.0, "gst_kt": 18.5, "wdir_deg": 235},
-    {"hour": 14, "wspd_kt": 13.8, "gst_kt": 18.0, "wdir_deg": 240},
-    {"hour": 15, "wspd_kt": 12.9, "gst_kt": 16.8, "wdir_deg": 242},
-    {"hour": 16, "wspd_kt": 11.5, "gst_kt": 15.2, "wdir_deg": 245},
-    {"hour": 17, "wspd_kt": 10.2, "gst_kt": 13.8, "wdir_deg": 248},
-    {"hour": 18, "wspd_kt": 9.1, "gst_kt": 12.5, "wdir_deg": 250}
-  ],
-  "day_1": [
-    ... (9 hours for day 1)
-  ],
-  "day_2": [
-    ... (9 hours for day 2)
-  ],
-  "day_3": [
-    ... (9 hours for day 3)
-  ],
-  "day_4": [
-    ... (9 hours for day 4)
-  ]
-}
-
-========================================
-CRITICAL REMINDER:
-- Training examples above were in TOON format (pipe-separated)
-- Your OUTPUT must be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no TOON format
-========================================`;
-
-  return systemPrompt + currentForecastPrompt;
 }
 
 function getWindDirectionText(degrees: number): string {
@@ -772,7 +442,7 @@ function getWindDirectionText(degrees: number): string {
   return directions[index];
 }
 
-async function generateForecastWithLLM(forecastText: string, format: string = 'json'): Promise<ForecastPrediction[][] | null> {
+async function generateForecastWithLLM(forecastText: string): Promise<ForecastPrediction[][] | null> {
   try {
     console.log('[LLM-FORECAST] Parsing multi-day NWS forecast...');
     console.log(`[LLM-FORECAST] Raw forecast text: ${forecastText.substring(0, 500)}`);
@@ -798,7 +468,6 @@ async function generateForecastWithLLM(forecastText: string, format: string = 'j
     }
 
     console.log(`[LLM-FORECAST] Loading training examples...`);
-    // Load JSON format examples (default)
     const examples = await loadTrainingExamples();
     console.log(`[LLM-FORECAST] Loaded ${examples.length} JSON training examples`);
 
@@ -942,9 +611,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const forceUpdate = url.searchParams.get('force') === 'true';
     const useTestData = url.searchParams.get('test') === 'true';
-    const format = url.searchParams.get('format') || 'json'; // 'json' or 'toon'
 
-    console.log(`[LLM-FORECAST] Request format: ${format}`);
+    console.log(`[LLM-FORECAST] Request received`);
 
     // If test mode, return placeholder data
     if (useTestData) {
@@ -969,8 +637,7 @@ export async function GET(request: NextRequest) {
           isLLMGenerated: true,
           lastUpdated: forecastCache.generatedAt,
           nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache',
-          format: 'JSON'
+          source: 'cache'
         }
       });
     }
@@ -1032,16 +699,15 @@ export async function GET(request: NextRequest) {
           isLLMGenerated: true,
           lastUpdated: forecastCache.generatedAt,
           nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache_same_forecast',
-          format: 'JSON'
+          source: 'cache_same_forecast'
         }
       });
     }
 
     // Generate new forecast with LLM
-    console.log(`[LLM-FORECAST] Generating 5-day forecast with LLM (${format.toUpperCase()} format, multi-day parsing, warnings)...`);
+    console.log(`[LLM-FORECAST] Generating 5-day forecast with LLM using JSON training examples`);
     console.log('[LLM-FORECAST] Inner waters forecast text length:', innerWatersForecast.length);
-    const predictions = await generateForecastWithLLM(innerWatersForecast, format);
+    const predictions = await generateForecastWithLLM(innerWatersForecast);
 
     if (!predictions) {
       logError('LLM prediction generation failed', { forecastText: innerWatersForecast?.substring(0, 200) + '...' });

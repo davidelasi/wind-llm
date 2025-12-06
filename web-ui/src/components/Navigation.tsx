@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wind, BarChart3, Home, Menu, X, Navigation as NavigationIcon, AlertTriangle, Bug, Eye, FlaskConical, GitCompare } from 'lucide-react';
+import { Wind, BarChart3, Home, Menu, X, Navigation as NavigationIcon, AlertTriangle, Bug, Eye, FlaskConical } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface NavigationProps {
@@ -184,12 +184,6 @@ export default function Navigation({ className = '' }: NavigationProps) {
       href: '/wind-history',
       icon: BarChart3,
       description: '5-day wind data charts'
-    },
-    {
-      name: 'Format Compare',
-      href: '/format-comparison',
-      icon: GitCompare,
-      description: 'JSON vs TOON format comparison'
     },
     {
       name: 'Sausage Mode',

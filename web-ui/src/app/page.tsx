@@ -442,9 +442,8 @@ export default function Home() {
       return allForecastData[selectedForecastDay] || allForecastData[0];
     }
 
-    return llmForecastData && llmForecastData[selectedForecastDay]
-      ? llmForecastData[selectedForecastDay]
-      : allForecastData[selectedForecastDay] || allForecastData[0];
+    // Return actual LLM forecast data if available, otherwise return empty array
+    return llmForecastData && llmForecastData[selectedForecastDay] ? llmForecastData[selectedForecastDay] : [];
   };
 
   const currentForecastData = getCurrentForecastData();

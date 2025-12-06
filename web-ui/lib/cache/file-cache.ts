@@ -14,7 +14,17 @@ export class FileCache {
   private cacheDir: string;
 
   constructor(cacheDir: string = '.cache') {
-    this.cacheDir = path.join(process.cwd(), cacheDir);
+    // In serverless environments (like Vercel), use /tmp for writable cache
+    // Check if we're in a serverless environment by detecting read-only filesystem
+    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT;
+
+    if (isServerless) {
+      // Use /tmp in serverless environments (only writable directory)
+      this.cacheDir = path.join('/tmp', cacheDir);
+    } else {
+      // Use project directory in development
+      this.cacheDir = path.join(process.cwd(), cacheDir);
+    }
   }
 
   /**
@@ -24,7 +34,8 @@ export class FileCache {
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
     } catch (error) {
-      // Directory already exists, ignore
+      // Log error but don't throw - gracefully degrade if cache directory can't be created
+      console.warn('[FileCache] Unable to create cache directory:', this.cacheDir, error);
     }
   }
 
@@ -85,21 +96,26 @@ export class FileCache {
    * Set cache data
    */
   async set<T>(key: string, data: T, ttlMs: number = 5 * 60 * 1000, metadata?: any): Promise<void> {
-    await this.ensureCacheDir();
+    try {
+      await this.ensureCacheDir();
 
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + ttlMs);
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + ttlMs);
 
-    const entry: CacheEntry<T> = {
-      data,
-      etag: crypto.createHash('md5').update(JSON.stringify(data)).digest('hex'),
-      timestamp: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      metadata
-    };
+      const entry: CacheEntry<T> = {
+        data,
+        etag: crypto.createHash('md5').update(JSON.stringify(data)).digest('hex'),
+        timestamp: now.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+        metadata
+      };
 
-    const cachePath = this.getCachePath(key);
-    await fs.writeFile(cachePath, JSON.stringify(entry, null, 2));
+      const cachePath = this.getCachePath(key);
+      await fs.writeFile(cachePath, JSON.stringify(entry, null, 2));
+    } catch (error) {
+      // Gracefully fail if cache write fails - log but don't throw
+      console.warn('[FileCache] Unable to write cache file:', key, error);
+    }
   }
 
   /**

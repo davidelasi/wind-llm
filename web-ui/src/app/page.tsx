@@ -455,6 +455,20 @@ export default function Home() {
 
   // Get forecast data based on mode
   const getCurrentForecastData = () => {
+    // For historical days (negative offsets), return empty time slots - no forecast to show
+    if (selectedForecastDay < 0) {
+      return [
+        { time: '11 AM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '12 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '1 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '2 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '3 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '4 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '5 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '6 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      ];
+    }
+
     if (!useLlmForecast) {
       return allForecastData[selectedForecastDay] || allForecastData[0];
     }

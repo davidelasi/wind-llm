@@ -145,6 +145,11 @@ function parseMultiDayForecast(forecastText: string): DayForecast[] {
       // Check if line starts with a period and a day name (full or abbreviated)
       const periodMatch = trimmed.match(/^\.?(TODAY|TONIGHT|MON(?:DAY)?|TUE(?:SDAY)?|WED(?:NESDAY)?|THU(?:RSDAY)?|FRI(?:DAY)?|SAT(?:URDAY)?|SUN(?:DAY)?)(\s+NIGHT)?\s*\.{3}(.*)$/i);
 
+      // Debug logging for first few lines
+      if (forecasts.length < 3 && (trimmed.startsWith('.') || trimmed.toLowerCase().includes('today') || trimmed.toLowerCase().includes('sun'))) {
+        console.log(`[LLM-FORECAST] Testing line: "${trimmed.substring(0, 50)}..."`, periodMatch ? 'MATCH' : 'NO MATCH');
+      }
+
       if (periodMatch) {
         // Save previous period if exists
         if (currentPeriod) {
@@ -272,10 +277,14 @@ async function loadTrainingExamples(): Promise<TrainingExample[]> {
 
     let jsonPath = path.join(jsonDirectory, `${month}_fc${forecastNumber}_examples.json`);
 
+    console.log(`[LLM-FORECAST] Trying primary path: ${jsonPath}`);
+
     // Check if file exists, if not try alternative paths
     try {
       await fs.access(jsonPath);
-    } catch {
+      console.log(`[LLM-FORECAST] Primary path EXISTS`);
+    } catch (accessError) {
+      console.log(`[LLM-FORECAST] Primary path FAILED, trying fallback...`);
       // Try parent directory (for development)
       const parentJsonPath = path.join(
         process.cwd(),
@@ -286,6 +295,7 @@ async function loadTrainingExamples(): Promise<TrainingExample[]> {
         'few_shot_examples',
         `${month}_fc${forecastNumber}_examples.json`
       );
+      console.log(`[LLM-FORECAST] Trying fallback path: ${parentJsonPath}`);
       jsonPath = parentJsonPath;
     }
 
@@ -468,8 +478,17 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
     }
 
     console.log(`[LLM-FORECAST] Loading training examples...`);
-    const examples = await loadTrainingExamples();
-    console.log(`[LLM-FORECAST] Loaded ${examples.length} JSON training examples`);
+    let examples;
+    try {
+      examples = await loadTrainingExamples();
+      console.log(`[LLM-FORECAST] Loaded ${examples.length} JSON training examples`);
+    } catch (loadError) {
+      console.error('[LLM-FORECAST] Failed to load training examples:', {
+        error: loadError instanceof Error ? loadError.message : String(loadError),
+        stack: loadError instanceof Error ? loadError.stack : undefined
+      });
+      throw loadError; // Re-throw to be caught by outer try-catch
+    }
 
     if (examples.length === 0) {
       throw new Error('No JSON training examples loaded - check file paths');
@@ -560,11 +579,18 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
     return allDays;
 
   } catch (error) {
-    logError('Error generating forecast with LLM', error, {
+    const errorDetails = {
       forecastTextLength: forecastText?.length,
       errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined
-    });
+      errorStack: error instanceof Error ? error.stack : undefined,
+      errorName: error instanceof Error ? error.name : 'UnknownError'
+    };
+
+    logError('Error generating forecast with LLM', error, errorDetails);
+
+    // Log to console for debugging
+    console.error('[LLM-FORECAST] FATAL ERROR:', errorDetails);
+
     return null;
   }
 }
@@ -738,7 +764,11 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         success: false,
-        error: 'LLM forecast generation failed and no cached data available'
+        error: 'LLM forecast generation failed and no cached data available',
+        details: process.env.NODE_ENV === 'development' ? {
+          forecastText: innerWatersForecast?.substring(0, 200),
+          message: 'Check server console for detailed error logs'
+        } : undefined
       }, { status: 500 });
     }
 

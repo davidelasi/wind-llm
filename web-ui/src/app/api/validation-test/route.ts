@@ -168,6 +168,15 @@ Return ONLY valid JSON in this exact format:
 }
 
 export async function GET(request: NextRequest) {
+  // Disable validation endpoints in production unless explicitly enabled
+  if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_VALIDATION_ENDPOINTS) {
+    return NextResponse.json({
+      success: false,
+      error: 'Validation endpoints are disabled in production',
+      message: 'These endpoints require large historical data files not included in deployment'
+    }, { status: 503 });
+  }
+
   try {
     console.log('[VALIDATION-TEST] Starting validation test for 2023-07-15...');
 

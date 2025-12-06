@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 // Load model configuration
-const MODEL_CONFIG_PATH = path.join(process.cwd(), '..', 'config', 'model_config.json');
+const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
 let MODEL_CONFIG: any = null;
 
 async function loadModelConfig() {
@@ -132,12 +132,23 @@ function parseMultiDayForecast(forecastText: string): DayForecast[] {
   const forecasts: DayForecast[] = [];
 
   try {
+    // Fix: Replace literal \n strings with actual newlines
+    // The forecast text contains escaped newlines (\\n) instead of actual newline characters
+    const normalizedText = forecastText.replace(/\\n/g, '\n');
+
     // Split by lines starting with a period followed by day name
-    const lines = forecastText.split('\n');
+    const lines = normalizedText.split('\n');
+
     let currentDay = 0;
     let lastDayName = '';
     let currentPeriod = '';
     let currentText = '';
+
+    // Debug: Log first 10 lines to see what we're working with
+    console.log('[LLM-FORECAST] First 10 lines of forecast:');
+    lines.slice(0, 10).forEach((line, i) => {
+      console.log(`  Line ${i}: "${line.trim().substring(0, 60)}${line.trim().length > 60 ? '...' : ''}"`);
+    });
 
     for (const line of lines) {
       const trimmed = line.trim();
@@ -145,9 +156,9 @@ function parseMultiDayForecast(forecastText: string): DayForecast[] {
       // Check if line starts with a period and a day name (full or abbreviated)
       const periodMatch = trimmed.match(/^\.?(TODAY|TONIGHT|MON(?:DAY)?|TUE(?:SDAY)?|WED(?:NESDAY)?|THU(?:RSDAY)?|FRI(?:DAY)?|SAT(?:URDAY)?|SUN(?:DAY)?)(\s+NIGHT)?\s*\.{3}(.*)$/i);
 
-      // Debug logging for first few lines
-      if (forecasts.length < 3 && (trimmed.startsWith('.') || trimmed.toLowerCase().includes('today') || trimmed.toLowerCase().includes('sun'))) {
-        console.log(`[LLM-FORECAST] Testing line: "${trimmed.substring(0, 50)}..."`, periodMatch ? 'MATCH' : 'NO MATCH');
+      // Debug logging for lines starting with period
+      if (trimmed.startsWith('.') && forecasts.length < 5) {
+        console.log(`[LLM-FORECAST] Testing period line: "${trimmed.substring(0, 60)}..."`, periodMatch ? 'MATCH ✓' : 'NO MATCH ✗');
       }
 
       if (periodMatch) {

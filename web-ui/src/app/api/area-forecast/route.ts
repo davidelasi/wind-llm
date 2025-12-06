@@ -95,21 +95,10 @@ function extractInnerWatersForecast(content: string): string | null {
 }
 
 function processForecast(forecastText: string): ProcessedForecast {
-  // Extract timestamp and calculate issue time
-  const timestampMatch = forecastText.match(/(\d{6})/);
-  let issuedTime = 'Unknown';
-  let forecastTime: Date = new Date();
-
-  if (timestampMatch) {
-    const timestamp = timestampMatch[1];
-    const day = parseInt(timestamp.substring(0, 2));
-    const hour = parseInt(timestamp.substring(2, 4));
-    const minute = parseInt(timestamp.substring(4, 6));
-
-    const now = new Date();
-    forecastTime = new Date(now.getFullYear(), now.getMonth(), day, hour, minute);
-    issuedTime = forecastTime.toISOString();
-  }
+  // Use current system time as forecast reference point
+  // The forecast is fetched in real-time, so "now" is the most accurate reference
+  const forecastTime = new Date();
+  const issuedTime = forecastTime.toISOString();
 
   // Extract warnings
   const warnings = extractWarnings(forecastText);
@@ -199,14 +188,18 @@ function calculatePeriodDates(forecastTime: Date): Record<string, number> {
   mappings['TODAY'] = 0;
   mappings['TONIGHT'] = 0;
 
-  // Calculate next 7 days and their weekday names
-  for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
+  // Calculate next 5 days and their weekday names
+  // Limited to 5 days to match NWS forecast horizon and prevent weekday name collisions
+  for (let dayOffset = 1; dayOffset <= 5; dayOffset++) {
     const futureDate = new Date(forecastTime);
     futureDate.setDate(forecastTime.getDate() + dayOffset);
     const weekdayName = weekdays[futureDate.getDay()];
 
-    mappings[weekdayName] = dayOffset;
-    mappings[`${weekdayName} NIGHT`] = dayOffset;
+    // Only set mapping if not already set (first occurrence wins)
+    if (!mappings[weekdayName]) {
+      mappings[weekdayName] = dayOffset;
+      mappings[`${weekdayName} NIGHT`] = dayOffset;
+    }
   }
 
   return mappings;

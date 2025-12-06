@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 // Load model configuration
-const MODEL_CONFIG_PATH = path.join(process.cwd(), '..', 'config', 'model_config.json');
+const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
 let MODEL_CONFIG: any = null;
 
 async function loadModelConfig() {
@@ -240,6 +240,15 @@ async function runSinglePrediction(
 }
 
 export async function GET(request: NextRequest) {
+  // Disable validation endpoints in production unless explicitly enabled
+  if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_VALIDATION_ENDPOINTS) {
+    return NextResponse.json({
+      success: false,
+      error: 'Validation endpoints are disabled in production',
+      message: 'These endpoints require large historical data files not included in deployment'
+    }, { status: 503 });
+  }
+
   try {
     const url = new URL(request.url);
     const numRuns = Math.min(parseInt(url.searchParams.get('runs') || '5'), 10); // Max 10 runs

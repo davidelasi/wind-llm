@@ -37,9 +37,8 @@ export async function GET(request: NextRequest) {
 
     // 3. Try different path resolutions
     const pathsToTry = [
-      path.join(process.cwd(), '..', 'data', 'training', 'few_shot_examples', `${month}_fc${forecastNumber}_examples.json`),
-      path.join(process.cwd(), '..', '..', 'data', 'training', 'few_shot_examples', `${month}_fc${forecastNumber}_examples.json`),
-      path.join('/Users/davidelasi/Documents/Wind_Model/wind-forecast-llm/data/training/few_shot_examples', `${month}_fc${forecastNumber}_examples.json`)
+      path.join(process.cwd(), 'data', 'training', 'few_shot_examples', `${month}_fc${forecastNumber}_examples.json`),
+      path.join(process.cwd(), '..', 'data', 'training', 'few_shot_examples', `${month}_fc${forecastNumber}_examples.json`)
     ];
 
     debugInfo.files = {};

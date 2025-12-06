@@ -24,16 +24,10 @@ import { RefreshCw } from 'lucide-react';
 export default function FormatComparisonPage() {
   const [selectedForecastDay, setSelectedForecastDay] = useState(0);
 
-  // Separate state for JSON and TOON format forecasts
-  const [jsonForecastData, setJsonForecastData] = useState<any[][] | null>(null);
-  const [jsonForecastLoading, setJsonForecastLoading] = useState(true);
-  const [jsonForecastError, setJsonForecastError] = useState<string | null>(null);
-  const [jsonForecastMeta, setJsonForecastMeta] = useState<any>(null);
-
-  const [toonForecastData, setToonForecastData] = useState<any[][] | null>(null);
-  const [toonForecastLoading, setToonForecastLoading] = useState(true);
-  const [toonForecastError, setToonForecastError] = useState<string | null>(null);
-  const [toonForecastMeta, setToonForecastMeta] = useState<any>(null);
+  const [forecastData, setForecastData] = useState<any[][] | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(true);
+  const [forecastError, setForecastError] = useState<string | null>(null);
+  const [forecastMeta, setForecastMeta] = useState<any>(null);
 
   // Use unified wind data hook for actual wind overlay
   const { data: actualWindData, isLoading: actualWindLoading } = useWindData({
@@ -97,13 +91,12 @@ export default function FormatComparisonPage() {
     ],
   ];
 
-  // Fetch JSON format forecast
-  const fetchJsonForecast = async (forceUpdate = false) => {
+  // Fetch forecast
+  const fetchForecast = async (forceUpdate = false) => {
     try {
-      setJsonForecastLoading(true);
+      setForecastLoading(true);
       const params = new URLSearchParams();
       if (forceUpdate) params.set('force', 'true');
-      params.set('format', 'json');
 
       const response = await fetch(`/api/llm-forecast?${params.toString()}`);
       const data = await response.json();
@@ -118,71 +111,29 @@ export default function FormatComparisonPage() {
           isLLMGenerated: data.data.isLLMGenerated,
           source: data.data.source,
           warning: data.data.warning,
-          nwsForecastTime: data.data.nwsForecastTime,
-          format: data.data.format || 'JSON'
+          nwsForecastTime: data.data.nwsForecastTime
         };
 
-        setJsonForecastData(predictions);
-        setJsonForecastMeta(meta);
-        setJsonForecastError(null);
+        setForecastData(predictions);
+        setForecastMeta(meta);
+        setForecastError(null);
       } else {
-        setJsonForecastError(data.error || 'Failed to fetch JSON forecast');
+        setForecastError(data.error || 'Failed to fetch forecast');
       }
     } catch (err) {
-      setJsonForecastError('Network error fetching JSON forecast');
+      setForecastError('Network error fetching forecast');
     } finally {
-      setJsonForecastLoading(false);
-    }
-  };
-
-  // Fetch TOON format forecast
-  const fetchToonForecast = async (forceUpdate = false) => {
-    try {
-      setToonForecastLoading(true);
-      const params = new URLSearchParams();
-      if (forceUpdate) params.set('force', 'true');
-      params.set('format', 'toon');
-
-      const response = await fetch(`/api/llm-forecast?${params.toString()}`);
-      const data = await response.json();
-
-      if (data.success) {
-        const predictions = data.data.predictions && data.data.predictions.length > 0
-          ? data.data.predictions
-          : null;
-
-        const meta = {
-          lastUpdated: data.data.lastUpdated,
-          isLLMGenerated: data.data.isLLMGenerated,
-          source: data.data.source,
-          warning: data.data.warning,
-          nwsForecastTime: data.data.nwsForecastTime,
-          format: data.data.format || 'TOON'
-        };
-
-        setToonForecastData(predictions);
-        setToonForecastMeta(meta);
-        setToonForecastError(null);
-      } else {
-        setToonForecastError(data.error || 'Failed to fetch TOON forecast');
-      }
-    } catch (err) {
-      setToonForecastError('Network error fetching TOON forecast');
-    } finally {
-      setToonForecastLoading(false);
+      setForecastLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchJsonForecast();
-    fetchToonForecast();
+    fetchForecast();
 
-    const jsonForecastInterval = setInterval(() => fetchJsonForecast(false), 60 * 60 * 1000);
-    const toonForecastInterval = setInterval(() => fetchToonForecast(false), 60 * 60 * 1000);
+    const forecastInterval = setInterval(() => fetchForecast(false), 60 * 60 * 1000);
 
     return () => {
-      clearInterval(jsonForecastInterval);
-      clearInterval(toonForecastInterval);
+      clearInterval(forecastInterval);
     };
   }, []);
 
@@ -394,18 +345,18 @@ export default function FormatComparisonPage() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
 
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6">
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">JSON vs TOON Format Comparison</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Wind Forecasting System</h1>
             <p className="text-sm text-gray-600">
-              Comparing LLM forecast accuracy using different training data formats (11 AM - 6 PM PST)
+              AI-powered wind predictions for AGXC1 station using JSON-based training data (11 AM - 6 PM PST)
               <br />
-              <span className="text-xs text-purple-600">Actual wind data overlayed when available • Day selection synchronized</span>
+              <span className="text-xs text-purple-600">Actual wind data overlay available • Hourly forecasts with 5-day outlook</span>
             </p>
           </div>
 
-          {/* Day Selection Buttons - Controls both charts */}
+          {/* Day Selection Buttons */}
           <div className="flex justify-center gap-2 mb-6">
             {dayLabels.map((label, index) => (
               <button
@@ -422,243 +373,92 @@ export default function FormatComparisonPage() {
             ))}
           </div>
 
-          {/* Side-by-side charts for JSON vs TOON */}
-          <div className="grid grid-cols-2 gap-6">
-            {/* JSON Format Chart */}
-            <div>
-              <div className="mb-3 text-center">
-                <h3 className="text-md font-semibold text-blue-700">JSON Format</h3>
-                {jsonForecastLoading && <p className="text-xs text-gray-500">Loading...</p>}
-                {jsonForecastError && <p className="text-xs text-red-500">{jsonForecastError}</p>}
-                {jsonForecastMeta && (
-                  <p className="text-xs text-gray-500">
-                    {jsonForecastMeta.isLLMGenerated ? '🤖 LLM Generated' : '📊 Placeholder'}
-                  </p>
-                )}
-              </div>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={(() => {
-                      const forecastDay = jsonForecastData?.[selectedForecastDay] || allForecastData[selectedForecastDay] || allForecastData[0];
-                      return forecastDay.map((forecastPoint: any, index: number) => {
-                        const actual = actualWindForDay?.[index];
-                        return {
-                          ...forecastPoint,
-                          actualWindSpeed: actual?.actualWindSpeed || null,
-                          actualGustSpeed: actual?.actualGustSpeed || null
-                        };
-                      });
-                    })()}
-                    margin={{ top: 30, right: 20, left: 20, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="time"
-                      tick={{ fontSize: 10, fill: '#374151', textAnchor: 'start' }}
-                      axisLine={{ stroke: '#9ca3af' }}
-                      tickLine={{ stroke: '#9ca3af' }}
-                      interval={0}
-                    />
-                    <YAxis
-                      domain={[0, (dataMax: number) => Math.max(20, Math.ceil(dataMax / 5) * 5)]}
-                      tick={{ fontSize: 10, fill: '#374151' }}
-                      axisLine={{ stroke: '#9ca3af' }}
-                      tickLine={{ stroke: '#9ca3af' }}
-                      label={{
-                        value: 'Wind Speed (knots)',
-                        angle: -90,
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#374151', fontSize: 10 }
-                      }}
-                    />
-                    <Tooltip content={<CustomForecastTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: '10px' }} iconType="line" />
-                    <ReferenceLine y={10} stroke="#059669" strokeDasharray="3 3" />
-                    <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
-                    <Bar
-                      dataKey="gustSpeed"
-                      shape={<CustomForecastBar />}
-                      fill="#3b82f6"
-                      name="Forecast (bars)"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="actualWindSpeed"
-                      stroke="#374151"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#374151' }}
-                      connectNulls={false}
-                      name="Actual Wind"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="actualGustSpeed"
-                      stroke="#6b7280"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#6b7280' }}
-                      connectNulls={false}
-                      name="Actual Gusts"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+          {/* Forecast Chart */}
+          <div className="mx-auto max-w-3xl">
+            <div className="mb-3 text-center">
+              <h3 className="text-lg font-semibold text-blue-700">AI Wind Forecast</h3>
+              {forecastLoading && <p className="text-xs text-gray-500">Loading...</p>}
+              {forecastError && <p className="text-xs text-red-500">{forecastError}</p>}
+              {forecastMeta && (
+                <p className="text-xs text-gray-500">
+                  {forecastMeta.isLLMGenerated ? '🤖 LLM Generated' : '📊 Placeholder Data'}
+                </p>
+              )}
             </div>
-
-            {/* TOON Format Chart */}
-            <div>
-              <div className="mb-3 text-center">
-                <h3 className="text-md font-semibold text-green-700">TOON Format</h3>
-                {toonForecastLoading && <p className="text-xs text-gray-500">Loading...</p>}
-                {toonForecastError && <p className="text-xs text-red-500">{toonForecastError}</p>}
-                {toonForecastMeta && (
-                  <p className="text-xs text-gray-500">
-                    {toonForecastMeta.isLLMGenerated ? '🤖 LLM Generated' : '📊 Placeholder'}
-                  </p>
-                )}
-              </div>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    data={(() => {
-                      const forecastDay = toonForecastData?.[selectedForecastDay] || allForecastData[selectedForecastDay] || allForecastData[0];
-                      return forecastDay.map((forecastPoint: any, index: number) => {
-                        const actual = actualWindForDay?.[index];
-                        return {
-                          ...forecastPoint,
-                          actualWindSpeed: actual?.actualWindSpeed || null,
-                          actualGustSpeed: actual?.actualGustSpeed || null
-                        };
-                      });
-                    })()}
-                    margin={{ top: 30, right: 20, left: 20, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="time"
-                      tick={{ fontSize: 10, fill: '#374151', textAnchor: 'start' }}
-                      axisLine={{ stroke: '#9ca3af' }}
-                      tickLine={{ stroke: '#9ca3af' }}
-                      interval={0}
-                    />
-                    <YAxis
-                      domain={[0, (dataMax: number) => Math.max(20, Math.ceil(dataMax / 5) * 5)]}
-                      tick={{ fontSize: 10, fill: '#374151' }}
-                      axisLine={{ stroke: '#9ca3af' }}
-                      tickLine={{ stroke: '#9ca3af' }}
-                      label={{
-                        value: 'Wind Speed (knots)',
-                        angle: -90,
-                        position: 'insideLeft',
-                        style: { textAnchor: 'middle', fill: '#374151', fontSize: 10 }
-                      }}
-                    />
-                    <Tooltip content={<CustomForecastTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: '10px' }} iconType="line" />
-                    <ReferenceLine y={10} stroke="#059669" strokeDasharray="3 3" />
-                    <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
-                    <Bar
-                      dataKey="gustSpeed"
-                      shape={<CustomForecastBar />}
-                      fill="#3b82f6"
-                      name="Forecast (bars)"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="actualWindSpeed"
-                      stroke="#374151"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#374151' }}
-                      connectNulls={false}
-                      name="Actual Wind"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="actualGustSpeed"
-                      stroke="#6b7280"
-                      strokeWidth={2}
-                      dot={{ r: 3, fill: '#6b7280' }}
-                      connectNulls={false}
-                      name="Actual Gusts"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={(() => {
+                    const forecastDay = forecastData?.[selectedForecastDay] || allForecastData[selectedForecastDay] || allForecastData[0];
+                    return forecastDay.map((forecastPoint: any, index: number) => {
+                      const actual = actualWindForDay?.[index];
+                      return {
+                        ...forecastPoint,
+                        actualWindSpeed: actual?.actualWindSpeed || null,
+                        actualGustSpeed: actual?.actualGustSpeed || null
+                      };
+                    });
+                  })()}
+                  margin={{ top: 30, right: 20, left: 20, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="time"
+                    tick={{ fontSize: 10, fill: '#374151', textAnchor: 'start' }}
+                    axisLine={{ stroke: '#9ca3af' }}
+                    tickLine={{ stroke: '#9ca3af' }}
+                    interval={0}
+                  />
+                  <YAxis
+                    domain={[0, (dataMax: number) => Math.max(20, Math.ceil(dataMax / 5) * 5)]}
+                    tick={{ fontSize: 10, fill: '#374151' }}
+                    axisLine={{ stroke: '#9ca3af' }}
+                    tickLine={{ stroke: '#9ca3af' }}
+                    label={{
+                      value: 'Wind Speed (knots)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      style: { textAnchor: 'middle', fill: '#374151', fontSize: 10 }
+                    }}
+                  />
+                  <Tooltip content={<CustomForecastTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: '10px' }} iconType="line" />
+                  <ReferenceLine y={10} stroke="#059669" strokeDasharray="3 3" />
+                  <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
+                  <Bar
+                    dataKey="gustSpeed"
+                    shape={<CustomForecastBar />}
+                    fill="#3b82f6"
+                    name="Forecast (bars)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="actualWindSpeed"
+                    stroke="#374151"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#374151' }}
+                    connectNulls={false}
+                    name="Actual Wind"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="actualGustSpeed"
+                    stroke="#6b7280"
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: '#6b7280' }}
+                    connectNulls={false}
+                    name="Actual Gusts"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Comparison Results Section */}
-          {jsonForecastData && toonForecastData && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <h4 className="text-sm font-semibold text-blue-800 mb-3">📊 Format Comparison Results</h4>
-
-              {(() => {
-                const jsonDay = jsonForecastData[selectedForecastDay] || [];
-                const toonDay = toonForecastData[selectedForecastDay] || [];
-
-                if (jsonDay.length === 0 || toonDay.length === 0) {
-                  return <p className="text-xs text-gray-500">Waiting for forecast data...</p>;
-                }
-
-                let identical = true;
-                let maxWindDiff = 0;
-                let maxGustDiff = 0;
-                let differences: Array<{hour: string, windDiff: number, gustDiff: number}> = [];
-
-                jsonDay.forEach((jsonHour: any, i: number) => {
-                  const toonHour = toonDay[i];
-                  if (jsonHour && toonHour) {
-                    const windDiff = Math.abs(jsonHour.windSpeed - toonHour.windSpeed);
-                    const gustDiff = Math.abs(jsonHour.gustSpeed - toonHour.gustSpeed);
-
-                    if (windDiff > 0.01 || gustDiff > 0.01) {
-                      identical = false;
-                      maxWindDiff = Math.max(maxWindDiff, windDiff);
-                      maxGustDiff = Math.max(maxGustDiff, gustDiff);
-                      differences.push({
-                        hour: jsonHour.time,
-                        windDiff,
-                        gustDiff
-                      });
-                    }
-                  }
-                });
-
-                return (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <div className="font-medium text-green-700 mb-2">
-                        {identical ? '✅ Results Identical!' : '⚠️ Differences Found'}
-                      </div>
-
-                      {!identical && (
-                        <div className="space-y-1 text-xs">
-                          <div>Max Wind Diff: {maxWindDiff.toFixed(1)} kt</div>
-                          <div>Max Gust Diff: {maxGustDiff.toFixed(1)} kt</div>
-                          <div>Hours with differences: {differences.length}/8</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="font-medium text-blue-700 mb-2">Token Usage</div>
-                      <div className="space-y-1 text-xs">
-                        <div>JSON: ~800 tokens per example</div>
-                        <div>TOON: ~100 tokens per example</div>
-                        <div className="text-green-600 font-medium">Savings: ~96% reduction</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex justify-between items-center mt-6">
             <div className="text-xs text-gray-500 flex gap-3">
               <span>
-                {jsonForecastMeta?.isLLMGenerated || toonForecastMeta?.isLLMGenerated ? (
-                  <span className="text-green-600">🤖 LLM-Generated Forecasts</span>
+                {forecastMeta?.isLLMGenerated ? (
+                  <span className="text-green-600">🤖 LLM-Generated Forecast</span>
                 ) : (
                   <span>📊 Placeholder Data</span>
                 )}
@@ -668,19 +468,14 @@ export default function FormatComparisonPage() {
               )}
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  fetchJsonForecast(true);
-                  fetchToonForecast(true);
-                }}
-                disabled={jsonForecastLoading || toonForecastLoading}
-                className="flex items-center gap-2 text-xs bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                <RefreshCw className={`h-4 w-4 ${(jsonForecastLoading || toonForecastLoading) ? 'animate-spin' : ''}`} />
-                {(jsonForecastLoading || toonForecastLoading) ? 'Updating...' : 'Refresh Both Forecasts'}
-              </button>
-            </div>
+            <button
+              onClick={() => fetchForecast(true)}
+              disabled={forecastLoading}
+              className="flex items-center gap-2 text-xs bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${forecastLoading ? 'animate-spin' : ''}`} />
+              {forecastLoading ? 'Updating...' : 'Refresh Forecast'}
+            </button>
           </div>
         </div>
       </div>

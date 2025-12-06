@@ -86,18 +86,23 @@ export async function GET(request: NextRequest) {
             rawData = await response.text();
           }
 
-          // Parse the data (same logic as before)
+          // Parse the data using appropriate format
           const lines = rawData.trim().split('\n');
           if (lines.length < 2) {
             throw new Error(`Not enough data lines. Expected at least 2, got ${lines.length}`);
           }
 
           let windData: WindData;
-          const dataLine = isTabularFormat ? lines[lines.length - 1] : lines[1];
-          const parts = dataLine.split(/\s+/);
 
-          // Parse tabular format
-          if (isTabularFormat && parts.length >= 13) {
+          if (isTabularFormat) {
+            // Parse tabular format (from AGXC1.txt)
+            const dataLine = lines[lines.length - 1];
+            const parts = dataLine.split(/\s+/);
+
+            if (parts.length < 13) {
+              throw new Error(`Invalid tabular data format. Expected at least 13 columns, got ${parts.length}`);
+            }
+
             windData = {
               datetime: `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`,
               windDirection: parseFloat(parts[5]) || 0,
@@ -108,7 +113,30 @@ export async function GET(request: NextRequest) {
               waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
             };
           } else {
-            throw new Error('Could not parse wind data');
+            // Parse 5-day format (from AGXC1_5day.txt)
+            const dataLines = lines.slice(2); // Skip header lines
+            const latestLine = dataLines[0]; // First data line has the most recent data
+
+            if (!latestLine || latestLine.split(/\s+/).length < 8) {
+              throw new Error('Could not parse 5-day format data');
+            }
+
+            const parts = latestLine.split(/\s+/);
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]);
+            const day = parseInt(parts[2]);
+            const hour = parseInt(parts[3]);
+            const minute = parseInt(parts[4]);
+
+            windData = {
+              datetime: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`,
+              windDirection: parseFloat(parts[5]) || 0,
+              windSpeed: Math.round(parseFloat(parts[6]) * 1.94384 * 10) / 10 || 0,
+              gustSpeed: Math.round(parseFloat(parts[7]) * 1.94384 * 10) / 10 || 0,
+              pressure: parseFloat(parts[12]) || 0,
+              airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
+              waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
+            };
           }
 
           // Handle invalid data

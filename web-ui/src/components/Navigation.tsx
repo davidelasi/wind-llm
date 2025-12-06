@@ -186,6 +186,12 @@ export default function Navigation({ className = '' }: NavigationProps) {
       description: '5-day wind data charts'
     },
     {
+      name: 'Home Backup',
+      href: '/home-backup',
+      icon: Home,
+      description: 'Original home page (backup)'
+    },
+    {
       name: 'Sausage Mode',
       href: '/sausage-mode',
       icon: Eye,

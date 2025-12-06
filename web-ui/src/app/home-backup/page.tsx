@@ -125,7 +125,7 @@ export default function Home() {
   const [showDebug, setShowDebug] = useState(false);
   const [showForecastDebug, setShowForecastDebug] = useState(false);
   const [showOriginalForecast, setShowOriginalForecast] = useState(false);
-  const [selectedForecastDay, setSelectedForecastDay] = useState(0); // -3=3 days ago, -2=2 days ago, -1=Yesterday, 0=Today, 1=Tomorrow, 2=D2, 3=D3, 4=D4
+  const [selectedForecastDay, setSelectedForecastDay] = useState(0); // 0=Today, 1=Tomorrow, 2=D2, 3=D3, 4=D4
   const [llmForecastData, setLlmForecastData] = useState<any[][] | null>(null);
   const [llmForecastLoading, setLlmForecastLoading] = useState(true);
   const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
@@ -419,36 +419,19 @@ export default function Home() {
     ],
   ];
 
-  // Get day labels (supports negative offsets for past days)
+  // Get day labels
   const getDayLabels = () => {
     const today = new Date();
-    const days = [];
-
-    // Add past days (-3 to -1)
-    for (let offset = -3; offset <= -1; offset++) {
-      const pastDate = new Date(today);
-      pastDate.setDate(today.getDate() + offset);
-
-      if (offset === -1) {
-        days.push('Yesterday');
-      } else if (offset === -2) {
-        days.push('2 days ago');
-      } else if (offset === -3) {
-        days.push('3 days ago');
-      }
-    }
-
-    // Add present and future days (0 to +4)
-    const presentFutureLabels = ['Today', 'Tomorrow'];
+    const days = ['Today', 'Tomorrow'];
 
     for (let i = 2; i < 5; i++) {
       const futureDate = new Date(today);
       futureDate.setDate(today.getDate() + i);
       const dayName = futureDate.toLocaleDateString('en-US', { weekday: 'short' });
-      presentFutureLabels.push(dayName);
+      days.push(dayName);
     }
 
-    return [...days, ...presentFutureLabels];
+    return days;
   };
 
   const dayLabels = getDayLabels();
@@ -749,86 +732,75 @@ export default function Home() {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                {selectedForecastDay >= 0 ? '5-Day Wind Forecast' : 'Historical Wind Data'}
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">5-Day Wind Forecast</h2>
               <p className="text-sm text-gray-600">
-                {selectedForecastDay >= 0
-                  ? 'Wind speed and gust predictions for the next few days (11 AM - 6 PM PST)'
-                  : 'Historical wind data for selected date (11 AM - 6 PM PST)'
-                }
+                Wind speed and gust predictions for the next few days (11 AM - 6 PM PST)
                 <br />
-                <span className="text-xs text-purple-600">Actual wind data displayed</span>
+                <span className="text-xs text-purple-600">Actual wind data overlayed when available</span>
               </p>
             </div>
 
-            {/* LLM Controls & Status - only show for forecast days */}
-            {selectedForecastDay >= 0 && (
-              <div className="text-right space-y-2">
-                {/* LLM Toggle */}
-                <div className="flex items-center justify-end gap-3">
-                  <label className="text-sm text-gray-600">LLM Forecast:</label>
-                  <button
-                    onClick={() => setUseLlmForecast(!useLlmForecast)}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      useLlmForecast
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {useLlmForecast ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-
-                {/* Format Selection */}
-
-
-                {/* Status Information */}
-                {llmForecastMeta && (
-                  <div className="text-xs text-gray-500">
-                    <div>
-                      <div>Source: {llmForecastMeta.source} ({llmForecastMeta.format})</div>
-                      {llmForecastMeta.isLLMGenerated && (
-                        <div>Updated: {new Date(llmForecastMeta.lastUpdated).toLocaleTimeString()}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {llmForecastError && (
-                  <div className="text-xs text-red-600">
-                    Error: {llmForecastError}
-                  </div>
-                )}
-
-                {llmForecastMeta?.warning && (
-                  <div className="text-xs text-yellow-600">
-                    ⚠️ {llmForecastMeta.warning}
-                  </div>
-                )}
+            {/* LLM Controls & Status */}
+            <div className="text-right space-y-2">
+              {/* LLM Toggle */}
+              <div className="flex items-center justify-end gap-3">
+                <label className="text-sm text-gray-600">LLM Forecast:</label>
+                <button
+                  onClick={() => setUseLlmForecast(!useLlmForecast)}
+                  className={`px-3 py-1 rounded text-xs font-medium ${
+                    useLlmForecast
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {useLlmForecast ? 'ON' : 'OFF'}
+                </button>
               </div>
-            )}
+
+              {/* Format Selection */}
+
+
+              {/* Status Information */}
+              {llmForecastMeta && (
+                <div className="text-xs text-gray-500">
+                  <div>
+                    <div>Source: {llmForecastMeta.source} ({llmForecastMeta.format})</div>
+                    {llmForecastMeta.isLLMGenerated && (
+                      <div>Updated: {new Date(llmForecastMeta.lastUpdated).toLocaleTimeString()}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {llmForecastError && (
+                <div className="text-xs text-red-600">
+                  Error: {llmForecastError}
+                </div>
+              )}
+
+              {llmForecastMeta?.warning && (
+                <div className="text-xs text-yellow-600">
+                  ⚠️ {llmForecastMeta.warning}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Day Selection Buttons */}
           <div className="flex justify-center gap-2 mb-6">
-            {dayLabels.map((label, index) => {
-              // Convert button index to actual day offset (-3 to +4)
-              const dayOffset = index - 3;
-              return (
-                <button
-                  key={index}
-                  onClick={() => setSelectedForecastDay(dayOffset)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedForecastDay === dayOffset
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+            {dayLabels.map((label, index) => (
+              <button
+                key={index}
+                onClick={() => setSelectedForecastDay(index)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedForecastDay === index
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <div className="h-80 w-full">
@@ -866,15 +838,13 @@ export default function Home() {
                 <ReferenceLine y={10} stroke="#059669" strokeDasharray="3 3" />
                 <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
 
-                {/* Forecast bars - only show for future/present days */}
-                {selectedForecastDay >= 0 && (
-                  <Bar
-                    dataKey="gustSpeed"
-                    shape={<CustomForecastBar />}
-                    fill="#3b82f6"
-                    name="Forecast (bars)"
-                  />
-                )}
+                {/* Forecast bars */}
+                <Bar
+                  dataKey="gustSpeed"
+                  shape={<CustomForecastBar />}
+                  fill="#3b82f6"
+                  name="Forecast (bars)"
+                />
 
                 {/* Actual wind data lines (same style as wind history page) */}
                 <Line
@@ -910,7 +880,7 @@ export default function Home() {
                 <>
                   <p>Days available: {actualWindData.length}</p>
                   <p>Available dates: {actualWindData.map((d: any) => d.date).join(', ')}</p>
-                  <p>Selected forecast day: {selectedForecastDay >= 0 ? `Day ${selectedForecastDay} (${['Today', 'Tomorrow', 'D+2', 'D+3', 'D+4'][selectedForecastDay]})` : `Historical ${Math.abs(selectedForecastDay)} days ago (${dayLabels[selectedForecastDay + 3] || 'Unknown'})`}</p>
+                  <p>Selected forecast day: Day {selectedForecastDay} ({['Today', 'Tomorrow', 'D+2', 'D+3', 'D+4'][selectedForecastDay]})</p>
                   <p>Looking for date: {(() => {
                     const now = new Date();
                     const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);

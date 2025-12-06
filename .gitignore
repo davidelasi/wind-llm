@@ -1,3 +1,7 @@
 # Virtual environment
 venv/
 .env.local
+
+# Cache directories
+web-ui/.cache/
+*.cache/

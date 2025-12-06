@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { formatInTimeZone } from 'date-fns-tz';
 import { format } from 'date-fns';
 import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
+import { fileCache, createEtagCache } from '../../../../lib/cache/file-cache';
 import type { WindHistoryResponse, DayData, WindDataPoint, DaySummary, RawWindMeasurement } from '@/types/wind-data';
 
 // Constants
@@ -272,84 +273,112 @@ function calculateDaySummary(hourlyData: WindDataPoint[]): DaySummary {
 }
 
 /**
- * GET handler for wind history API
+ * GET handler for wind history API with file caching
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-
   try {
-    console.log('[WIND-HISTORY] Fetching NOAA 5-day wind data...');
+    // Create cache key based on current hour to get fresh data each hour
+    const now = new Date();
+    const hourKey = formatInTimeZone(now, PACIFIC_TIMEZONE, 'yyyy-MM-dd-HH');
+    const cacheKey = `wind-history-${hourKey}`;
 
-    // Fetch raw data from NOAA
-    const response = await fetch(NOAA_DATA_URL, {
-      headers: {
-        'User-Agent': 'Wind Forecast LLM (david@example.com)',
-      },
-      next: { revalidate: 300 } // Cache for 5 minutes
-    });
+    console.log('[WIND-HISTORY] Cache key:', cacheKey);
 
-    if (!response.ok) {
-      throw new Error(`NOAA API responded with status: ${response.status}`);
-    }
+    // Try ETag cache first for HTTP conditional requests
+    try {
+      const { data, etag, cached } = await createEtagCache<WindHistoryResponse>(
+        fileCache,
+        cacheKey,
+        60 * 60 * 1000 // 1 hour cache
+      )(
+        request,
+        async () => {
+          console.log('[WIND-HISTORY] Cache miss, fetching fresh data...');
 
-    const rawText = await response.text();
-    console.log('[WIND-HISTORY] Raw data received:', rawText.length, 'bytes');
+          const startTime = Date.now();
 
-    // Parse and process data
-    const measurements = parseNoaaData(rawText);
-    console.log('[WIND-HISTORY] Parsed measurements:', measurements.length);
+          // Fetch raw data from NOAA
+          const response = await fetch(NOAA_DATA_URL, {
+            headers: {
+              'User-Agent': 'Wind Forecast LLM (david@example.com)',
+            },
+          });
 
-    if (measurements.length === 0) {
-      return NextResponse.json<WindHistoryResponse>({
-        success: false,
-        data: [],
-        metadata: {
-          station: STATION_ID,
-          location: LOCATION,
-          lastUpdated: new Date().toISOString(),
-          timezone: PACIFIC_TIMEZONE,
-          dateRange: { start: '', end: '' },
-          totalHours: 0,
-          totalDays: 0,
+          if (!response.ok) {
+            throw new Error(`NOAA API responded with status: ${response.status}`);
+          }
+
+          const rawText = await response.text();
+          console.log('[WIND-HISTORY] Raw data received:', rawText.length, 'bytes');
+
+          // Parse and process data
+          const measurements = parseNoaaData(rawText);
+          console.log('[WIND-HISTORY] Parsed measurements:', measurements.length);
+
+          if (measurements.length === 0) {
+            throw new Error('No valid wind data measurements found');
+          }
+
+          // Convert to wind data points with timezone handling
+          const dataPoints = convertToWindDataPoints(measurements);
+          console.log('[WIND-HISTORY] Converted to data points:', dataPoints.length);
+
+          // Group by day
+          const days = groupByDay(dataPoints);
+          console.log('[WIND-HISTORY] Grouped into days:', days.length);
+
+          // Calculate metadata
+          const dateRange = {
+            start: days[days.length - 1]?.date || '',
+            end: days[0]?.date || '',
+          };
+
+          const processingTime = Date.now() - startTime;
+          console.log('[WIND-HISTORY] Fresh data processed in', processingTime, 'ms');
+
+          // Return unified response structure
+          return {
+            success: true,
+            data: days,
+            metadata: {
+              station: STATION_ID,
+              location: LOCATION,
+              lastUpdated: new Date().toISOString(),
+              timezone: PACIFIC_TIMEZONE,
+              dateRange,
+              totalHours: dataPoints.length,
+              totalDays: days.length,
+            },
+          } as WindHistoryResponse;
+        }
+      );
+
+      // If ETag matched, this will throw { status: 304, etag }
+      // Otherwise return cached or fresh data with ETag header
+
+      console.log(`[WIND-HISTORY] ${cached ? 'CACHED' : 'FRESH'} data served`);
+
+      return NextResponse.json(data, {
+        headers: {
+          'ETag': etag,
+          'Cache-Control': 'public, max-age=300', // Browser cache for 5 minutes
         },
-        error: 'No valid wind data found',
-        message: 'The NOAA data file contains no parseable wind measurements',
       });
+
+    } catch (etagError: any) {
+      // Handle conditional request - return 304 Not Modified
+      if (etagError.status === 304) {
+        console.log('[WIND-HISTORY] Conditionally cached via ETag');
+        return new Response(null, {
+          status: 304,
+          headers: {
+            'ETag': etagError.etag,
+          },
+        });
+      }
+      // Re-throw if not an ETag error
+      throw etagError;
     }
-
-    // Convert to wind data points with timezone handling
-    const dataPoints = convertToWindDataPoints(measurements);
-    console.log('[WIND-HISTORY] Converted to data points:', dataPoints.length);
-
-    // Group by day
-    const days = groupByDay(dataPoints);
-    console.log('[WIND-HISTORY] Grouped into days:', days.length);
-
-    // Calculate metadata
-    const dateRange = {
-      start: days[days.length - 1]?.date || '',
-      end: days[0]?.date || '',
-    };
-
-    const processingTime = Date.now() - startTime;
-    console.log('[WIND-HISTORY] Processing completed in', processingTime, 'ms');
-
-    // Return unified response
-    const apiResponse: WindHistoryResponse = {
-      success: true,
-      data: days,
-      metadata: {
-        station: STATION_ID,
-        location: LOCATION,
-        lastUpdated: new Date().toISOString(),
-        timezone: PACIFIC_TIMEZONE,
-        dateRange,
-        totalHours: dataPoints.length,
-        totalDays: days.length,
-      },
-    };
-
-    return NextResponse.json(apiResponse);
 
   } catch (error) {
     console.error('[WIND-HISTORY] Error:', error);

@@ -41,49 +41,42 @@ export async function GET(request: NextRequest) {
           let isTabularFormat = false;
           let rawData: string = '';
 
+          // Always try tabular format first (better quality data)
           try {
             const tabularResponse = await fetch('https://www.ndbc.noaa.gov/data/realtime2/AGXC1.txt', {
               headers: { 'User-Agent': 'Wind-Forecast-App/1.0' }
             });
 
             if (tabularResponse.ok) {
-              const testData = await tabularResponse.text();
-              const lines = testData.trim().split('\n');
-              const lastLine = lines[lines.length - 1];
+              rawData = await tabularResponse.text();
+              const lines = rawData.trim().split('\n');
 
-              if (lines.length > 1 && lastLine.split(/\s+/).length > 10) {
-                const parts = lastLine.split(/\s+/);
-                const dataDate = new Date(`${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`);
-                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-                if (dataDate > sevenDaysAgo) {
-                  isTabularFormat = true;
-                  response = tabularResponse;
-                  rawData = testData;
-                  debugInfo.dataSource = 'tabular';
-                  debugInfo.tabularDataAge = `${Math.round((Date.now() - dataDate.getTime()) / (1000 * 60 * 60))} hours old`;
-                } else {
-                  console.log(`Tabular data is too old (${dataDate.toISOString()}), falling back to human-readable format...`);
-                  debugInfo.tabularDataAge = `${Math.round((Date.now() - dataDate.getTime()) / (1000 * 60 * 60 * 24))} days old - rejected`;
-                }
+              if (lines.length > 1) {
+                isTabularFormat = true;
+                response = tabularResponse;
+                debugInfo.dataSource = 'tabular';
+                debugInfo.dataQuality = 'high (real-time latest readings)';
+                console.log('[WIND-DATA] Using tabular format - highest data quality');
               }
             }
           } catch (error) {
-            console.log('Tabular format not available, trying human-readable format...');
+            console.log('Tabular format failed, will attempt fallback...');
           }
 
-          // Fallback to 5-day data
+          // Fallback to 5-day data only if tabular fails
           if (!isTabularFormat) {
             response = await fetch('https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt', {
               headers: { 'User-Agent': 'Wind-Forecast-App/1.0' }
             });
             debugInfo.dataSource = 'five-day-fallback';
+            debugInfo.dataQuality = 'lower (delayed vs real-time)';
 
             if (!response.ok) {
               throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             rawData = await response.text();
+            console.log('[WIND-DATA] Using 5-day fallback format');
           }
 
           // Parse the data using appropriate format

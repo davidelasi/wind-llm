@@ -199,6 +199,143 @@ Seas 10 to 12 ft. Small Craft Advisory in effect.
   - **PRES**: Pressure in hPa, 1 decimal place
   - **ATMP**: Air temperature in °C, 1 decimal place
 
+## DEPLOYMENT ENVIRONMENT CONSTRAINTS
+
+### Production Deployment: Vercel Serverless
+
+The web-ui application is deployed on **Vercel** as serverless functions. This imposes critical constraints that MUST be considered when implementing new features.
+
+#### Critical Constraint: Read-Only Filesystem
+
+**⚠️ CRITICAL:** Vercel's serverless environment has a **read-only filesystem** except for `/tmp`.
+
+**What this means:**
+- You CANNOT write files to the project directory in production
+- You CANNOT create directories in the project root or subdirectories
+- The ONLY writable directory is `/tmp`
+- `/tmp` is ephemeral and cleared between function invocations
+
+**Implementation Rules:**
+
+1. **File Caching**
+   - ✅ **CORRECT:** Use `/tmp` directory for cache in production
+   - ❌ **WRONG:** Write to `.cache`, `data/`, or any project directory
+   - **Example:** `lib/cache/file-cache.ts` detects serverless environment and uses `/tmp/.cache`
+
+2. **Data Storage**
+   - ✅ **CORRECT:** Use external services (database, object storage, Redis, etc.)
+   - ✅ **CORRECT:** Store data in memory (with awareness of function cold starts)
+   - ✅ **CORRECT:** Read static files bundled with deployment
+   - ❌ **WRONG:** Write persistent data to filesystem
+   - ❌ **WRONG:** Expect filesystem state to persist between requests
+
+3. **Configuration Files**
+   - ✅ **CORRECT:** Bundle configuration files in `web-ui/` directory
+   - ✅ **CORRECT:** Use environment variables (set in Vercel dashboard)
+   - ❌ **WRONG:** Reference files outside `web-ui/` directory (parent paths like `../config`)
+   - **Example:** `config/model_config.json` copied into `web-ui/config/` for deployment
+
+4. **Training Data & Static Files**
+   - ✅ **CORRECT:** Bundle necessary data files within `web-ui/` directory
+   - ✅ **CORRECT:** Use paths relative to `process.cwd()` (which is `web-ui/` root in production)
+   - ❌ **WRONG:** Reference parent directories (`../data/`)
+   - **Example:** Training examples in `web-ui/data/training/few_shot_examples/`
+
+#### Serverless Environment Detection
+
+Use these environment variables to detect serverless deployment:
+
+```typescript
+const isServerless = process.env.VERCEL ||
+                     process.env.AWS_LAMBDA_FUNCTION_NAME ||
+                     process.env.LAMBDA_TASK_ROOT;
+
+if (isServerless) {
+  // Use /tmp for any file operations
+  const cachePath = path.join('/tmp', '.cache');
+} else {
+  // Development: use project directory
+  const cachePath = path.join(process.cwd(), '.cache');
+}
+```
+
+#### Graceful Degradation
+
+Always implement graceful error handling for filesystem operations:
+
+```typescript
+try {
+  await fs.writeFile(cachePath, data);
+} catch (error) {
+  // Log warning but don't crash - continue without cache
+  console.warn('[Cache] Unable to write, continuing without cache:', error);
+}
+```
+
+**Why:** Even `/tmp` can fail if:
+- Function has insufficient permissions
+- Disk quota exceeded
+- Filesystem errors in cloud infrastructure
+
+#### Other Vercel Constraints
+
+1. **Execution Time Limits:**
+   - Hobby plan: 10 seconds maximum
+   - Pro plan: 60 seconds maximum
+   - Design APIs to complete quickly or use background jobs
+
+2. **Memory Limits:**
+   - Default: 1024 MB
+   - Large data processing must be optimized for memory
+
+3. **Function Size:**
+   - Keep deployment bundle under 50 MB (uncompressed)
+   - Large datasets may need external storage
+
+4. **Cold Starts:**
+   - Functions may be "cold" (newly initialized) on each request
+   - Don't rely on in-memory state persisting between requests
+   - Use external caching (Redis, KV store) for shared state
+
+#### Testing for Production Compatibility
+
+Before deploying new features, verify:
+
+1. ✅ No filesystem writes outside `/tmp`
+2. ✅ All required files bundled in `web-ui/` directory
+3. ✅ No parent directory references (`../`)
+4. ✅ Graceful error handling for all I/O operations
+5. ✅ Environment detection for serverless-specific code paths
+6. ✅ Test with `NODE_ENV=production` locally
+
+#### Real-World Issues Encountered
+
+**Issue 1: Cache Directory Not Writable**
+- **Error:** `ENOENT: no such file or directory, open '/var/task/web-ui/.cache/'`
+- **Cause:** Attempted to write cache to project directory
+- **Fix:** Modified `lib/cache/file-cache.ts` to use `/tmp` in serverless environment
+- **Commit:** `132cc82` (Dec 2025)
+
+**Issue 2: External File Dependencies**
+- **Error:** API routes failing to find `config/model_config.json`
+- **Cause:** Configuration file referenced from parent directory (`../config`)
+- **Fix:** Copied config file into `web-ui/config/` and updated all path references
+- **Commit:** `fe9577c` (Dec 2025)
+
+#### Summary Checklist
+
+When implementing ANY new feature that involves file I/O:
+
+- [ ] Use `/tmp` for writable files in production
+- [ ] Implement serverless environment detection
+- [ ] Add graceful error handling for file operations
+- [ ] Bundle all required static files in `web-ui/`
+- [ ] Use relative paths from `process.cwd()` (no `../`)
+- [ ] Test locally with `NODE_ENV=production`
+- [ ] Consider memory and execution time constraints
+
+**REMEMBER:** If a feature works locally but fails on Vercel, filesystem operations are the most likely culprit.
+
 ## PROJECT STRUCTURE
 ```
 wind-llm/

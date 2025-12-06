@@ -646,7 +646,12 @@ function logError(context: string, error: any, additionalData?: any) {
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const forceUpdate = url.searchParams.get('force') === 'true';
+
+    // Security: Only allow force refresh in development or with admin key
+    const isAdmin = request.headers.get('x-admin-key') === process.env.ADMIN_SECRET;
+    const forceRequested = url.searchParams.get('force') === 'true';
+    const forceUpdate = forceRequested && (process.env.NODE_ENV !== 'production' || isAdmin);
+
     const useTestData = url.searchParams.get('test') === 'true';
 
     console.log(`[LLM-FORECAST] Request received`);

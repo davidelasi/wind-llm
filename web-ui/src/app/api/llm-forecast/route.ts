@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
+import {
+  extractInnerWatersForecast,
+  extractWarnings,
+  convertPeriodsToRelative,
+  formatForecastForLLM
+} from '@/lib/forecast-utils';
 
 // Load model configuration
 const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
@@ -31,6 +37,7 @@ interface CachedForecast {
   nwsForecastTime: string;
   generatedAt: string;
   expiresAt: string;
+  llmPrompt: string;
 }
 
 interface TrainingExample {
@@ -103,156 +110,6 @@ async function fetchLatestNWSForecast(): Promise<{ text: string; issuedTime: str
   }
 }
 
-function extractInnerWatersForecast(forecastText: string): string | null {
-  try {
-    // Look for inner waters section in the forecast
-    const innerWatersRegex = /INNER\s+WATERS[\s\S]*?(?=\$\$)/i;
-    const match = forecastText.match(innerWatersRegex);
-
-    if (match) {
-      return match[0].trim();
-    }
-
-    // Fallback: look for any section that might contain relevant forecast
-    const generalMatch = forecastText.match(/\.TODAY[\s\S]*?(?=\$\$)/i);
-    return generalMatch ? generalMatch[0].trim() : null;
-  } catch (error) {
-    console.error('Error extracting inner waters forecast:', error);
-    return null;
-  }
-}
-
-interface DayForecast {
-  day: number;
-  period: string;
-  text: string;
-}
-
-function parseMultiDayForecast(forecastText: string): DayForecast[] {
-  const forecasts: DayForecast[] = [];
-
-  try {
-    // Fix: Replace literal \n strings with actual newlines
-    // The forecast text contains escaped newlines (\\n) instead of actual newline characters
-    const normalizedText = forecastText.replace(/\\n/g, '\n');
-
-    // Split by lines starting with a period followed by day name
-    const lines = normalizedText.split('\n');
-
-    let currentDay = 0;
-    let lastDayName = '';
-    let currentPeriod = '';
-    let currentText = '';
-
-    // Debug: Log first 10 lines to see what we're working with
-    console.log('[LLM-FORECAST] First 10 lines of forecast:');
-    lines.slice(0, 10).forEach((line, i) => {
-      console.log(`  Line ${i}: "${line.trim().substring(0, 60)}${line.trim().length > 60 ? '...' : ''}"`);
-    });
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      // Check if line starts with a period and a day name (full or abbreviated)
-      const periodMatch = trimmed.match(/^\.?(TODAY|TONIGHT|MON(?:DAY)?|TUE(?:SDAY)?|WED(?:NESDAY)?|THU(?:RSDAY)?|FRI(?:DAY)?|SAT(?:URDAY)?|SUN(?:DAY)?)(\s+NIGHT)?\s*\.{3}(.*)$/i);
-
-      // Debug logging for lines starting with period
-      if (trimmed.startsWith('.') && forecasts.length < 5) {
-        console.log(`[LLM-FORECAST] Testing period line: "${trimmed.substring(0, 60)}..."`, periodMatch ? 'MATCH ✓' : 'NO MATCH ✗');
-      }
-
-      if (periodMatch) {
-        // Save previous period if exists
-        if (currentPeriod) {
-          forecasts.push({
-            day: currentDay,
-            period: currentPeriod,
-            text: currentText.trim()
-          });
-        }
-
-        const dayName = periodMatch[1].toUpperCase();
-        const isNight = !!periodMatch[2];
-        const restOfLine = periodMatch[3] || '';
-
-        // Determine which day this is
-        if (dayName === 'TODAY') {
-          currentDay = 0;
-          lastDayName = dayName;
-        } else if (dayName === 'TONIGHT') {
-          currentDay = 0;
-        } else {
-          // For named days (SATURDAY, SUNDAY, etc.)
-          if (dayName !== lastDayName && !isNight) {
-            currentDay++;
-            lastDayName = dayName;
-          }
-        }
-
-        currentPeriod = isNight ? `${dayName} NIGHT` : dayName;
-        currentText = restOfLine;
-      } else if (currentPeriod && trimmed && !trimmed.startsWith('$$')) {
-        // Continue accumulating text for current period
-        currentText += ' ' + trimmed;
-      }
-    }
-
-    // Save last period
-    if (currentPeriod) {
-      forecasts.push({
-        day: currentDay,
-        period: currentPeriod,
-        text: currentText.trim()
-      });
-    }
-
-    console.log(`[LLM-FORECAST] Parsed ${forecasts.length} periods:`, forecasts.map(f => `Day ${f.day}: ${f.period}`).join(', '));
-  } catch (error) {
-    console.error('[LLM-FORECAST] Error in parseMultiDayForecast:', error);
-  }
-
-  return forecasts;
-}
-
-function extractWarnings(forecastText: string): string[] {
-  const warnings: string[] = [];
-
-  // Look for common warning patterns
-  const warningPatterns = [
-    /Small Craft Advisory/gi,
-    /Gale Warning/gi,
-    /Storm Warning/gi,
-    /Hurricane Warning/gi,
-    /Tropical Storm Warning/gi,
-    /Dense Fog Advisory/gi,
-    /High Surf Advisory/gi,
-    /Beach Hazards Statement/gi
-  ];
-
-  for (const pattern of warningPatterns) {
-    const matches = forecastText.match(pattern);
-    if (matches) {
-      matches.forEach(match => {
-        if (!warnings.includes(match)) {
-          warnings.push(match);
-        }
-      });
-    }
-  }
-
-  return warnings;
-}
-
-function combineDayForecasts(forecasts: DayForecast[], day: number): string {
-  const dayForecasts = forecasts.filter(f => f.day === day);
-
-  if (dayForecasts.length === 0) {
-    return '';
-  }
-
-  return dayForecasts.map(f => `${f.period}: ${f.text}`).join('\n');
-}
-
 // JSON format support functions - Load training examples from JSON files
 async function loadTrainingExamples(): Promise<TrainingExample[]> {
   try {
@@ -322,7 +179,7 @@ async function loadTrainingExamples(): Promise<TrainingExample[]> {
   }
 }
 
-function createFewShotPrompt(dayForecasts: string[], warnings: string[], examples: TrainingExample[]): string {
+function createFewShotPrompt(formattedForecast: string, warnings: string[], examples: TrainingExample[]): string {
   const systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
 
 Your task is to predict hourly wind speed (WSPD), gust speed (GST), and wind direction for 10 AM - 6 PM PST for the next 5 days based on NWS coastal forecasts.
@@ -409,13 +266,8 @@ NOW PREDICT based on the following NWS forecast:
     currentForecastPrompt += `WARNINGS/ADVISORIES: ${warnings.join(', ')}\n\n`;
   }
 
-  // Add forecast for each day
-  currentForecastPrompt += `FORECAST:\n`;
-  dayForecasts.forEach((forecast, index) => {
-    if (forecast) {
-      currentForecastPrompt += `Day ${index}:\n${forecast}\n\n`;
-    }
-  });
+  // Add formatted forecast (already processed with relative day labels)
+  currentForecastPrompt += `FORECAST:\n${formattedForecast}\n`;
 
   currentForecastPrompt += `
 ========================================
@@ -463,30 +315,24 @@ function getWindDirectionText(degrees: number): string {
   return directions[index];
 }
 
-async function generateForecastWithLLM(forecastText: string): Promise<ForecastPrediction[][] | null> {
+async function generateForecastWithLLM(forecastText: string): Promise<{ predictions: ForecastPrediction[][], prompt: string } | null> {
   try {
-    console.log('[LLM-FORECAST] Parsing multi-day NWS forecast...');
-    console.log(`[LLM-FORECAST] Raw forecast text: ${forecastText.substring(0, 500)}`);
-    const parsedForecasts = parseMultiDayForecast(forecastText);
-    console.log(`[LLM-FORECAST] Parsed ${parsedForecasts.length} forecast periods`);
+    console.log('[LLM-FORECAST] Processing forecast with simplified approach...');
+    console.log(`[LLM-FORECAST] Raw forecast text length: ${forecastText.length}`);
 
-    // Extract warnings
+    // Extract warnings using shared utility
     const warnings = extractWarnings(forecastText);
     if (warnings.length > 0) {
       console.log(`[LLM-FORECAST] Found warnings: ${warnings.join(', ')}`);
     }
 
-    // Combine forecasts for each day (0-4)
-    const dayForecasts: string[] = [];
-    for (let day = 0; day < 5; day++) {
-      const combinedForecast = combineDayForecasts(parsedForecasts, day);
-      dayForecasts.push(combinedForecast);
-      if (combinedForecast) {
-        console.log(`[LLM-FORECAST] Day ${day} forecast: ${combinedForecast.substring(0, 80)}...`);
-      } else {
-        console.log(`[LLM-FORECAST] Day ${day} forecast: (empty)`);
-      }
-    }
+    // Convert periods to relative format (D0_DAY, D1_NIGHT, etc.)
+    const processedForecast = convertPeriodsToRelative(forecastText, new Date());
+    console.log(`[LLM-FORECAST] Processed forecast length: ${processedForecast.length}`);
+
+    // Format for LLM (simple string replacement: .D0_NIGHT... → Day 0 Night:)
+    const formattedForecast = formatForecastForLLM(processedForecast);
+    console.log(`[LLM-FORECAST] Formatted forecast for LLM, length: ${formattedForecast.length}`);
 
     console.log(`[LLM-FORECAST] Loading training examples...`);
     let examples;
@@ -506,7 +352,7 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
     }
 
     console.log('[LLM-FORECAST] Creating few-shot prompt with JSON format examples...');
-    const prompt = createFewShotPrompt(dayForecasts, warnings, examples);
+    const prompt = createFewShotPrompt(formattedForecast, warnings, examples);
     console.log(`[LLM-FORECAST] JSON prompt created, length: ${prompt.length} characters`);
 
     console.log('[LLM-FORECAST] Calling Claude API for 5-day forecast prediction...');
@@ -587,7 +433,7 @@ async function generateForecastWithLLM(forecastText: string): Promise<ForecastPr
     }
 
     console.log('[LLM-FORECAST] Successfully generated 5-day forecast');
-    return allDays;
+    return { predictions: allDays, prompt };
 
   } catch (error) {
     const errorDetails = {
@@ -679,7 +525,8 @@ export async function GET(request: NextRequest) {
           isLLMGenerated: true,
           lastUpdated: forecastCache.generatedAt,
           nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache'
+          source: 'cache',
+          llmPrompt: forecastCache.llmPrompt
         }
       });
     }
@@ -741,7 +588,8 @@ export async function GET(request: NextRequest) {
           isLLMGenerated: true,
           lastUpdated: forecastCache.generatedAt,
           nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache_same_forecast'
+          source: 'cache_same_forecast',
+          llmPrompt: forecastCache.llmPrompt
         }
       });
     }
@@ -749,9 +597,9 @@ export async function GET(request: NextRequest) {
     // Generate new forecast with LLM
     console.log(`[LLM-FORECAST] Generating 5-day forecast with LLM using JSON training examples`);
     console.log('[LLM-FORECAST] Inner waters forecast text length:', innerWatersForecast.length);
-    const predictions = await generateForecastWithLLM(innerWatersForecast);
+    const result = await generateForecastWithLLM(innerWatersForecast);
 
-    if (!predictions) {
+    if (!result) {
       logError('LLM prediction generation failed', { forecastText: innerWatersForecast?.substring(0, 200) + '...' });
       // If we have cached data, return it with a warning
       if (forecastCache) {
@@ -768,7 +616,8 @@ export async function GET(request: NextRequest) {
             lastUpdated: forecastCache.generatedAt,
             nwsForecastTime: forecastCache.nwsForecastTime,
             source: 'cache_llm_failed',
-            warning: 'LLM forecast generation failed, using cached data'
+            warning: 'LLM forecast generation failed, using cached data',
+            llmPrompt: forecastCache.llmPrompt
           }
         });
       }
@@ -793,11 +642,12 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from now
 
     forecastCache = {
-      predictions,
+      predictions: result.predictions,
       nwsForecastText: innerWatersForecast,
       nwsForecastTime: nwsForecast.issuedTime,
       generatedAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString()
+      expiresAt: expiresAt.toISOString(),
+      llmPrompt: result.prompt
     };
 
     console.log(`Successfully generated and cached new forecast`);
@@ -805,11 +655,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        predictions,
+        predictions: result.predictions,
         isLLMGenerated: true,
         lastUpdated: now.toISOString(),
         nwsForecastTime: nwsForecast.issuedTime,
-        source: 'fresh_llm'
+        source: 'fresh_llm',
+        llmPrompt: result.prompt
       }
     });
 

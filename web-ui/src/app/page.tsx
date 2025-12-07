@@ -131,6 +131,8 @@ export default function Home() {
   const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
   const [useLlmForecast, setUseLlmForecast] = useState(true);
   const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
+  const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
+  const [showLlmPrompt, setShowLlmPrompt] = useState(false);
 
   // Use unified wind data hook for ALL historical data (like wind-history page)
   const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
@@ -231,6 +233,7 @@ export default function Home() {
 
         setLlmForecastData(predictions);
         setLlmForecastMeta(meta);
+        setLlmPrompt(data.data.llmPrompt || null);
 
         setLlmForecastError(null);
       } else {
@@ -1039,6 +1042,29 @@ export default function Home() {
             </div>
           ) : null}
         </div>
+
+        {/* LLM Prompt Section */}
+        {llmPrompt && (
+          <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">LLM Prompt</h3>
+              <button
+                onClick={() => setShowLlmPrompt(!showLlmPrompt)}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                {showLlmPrompt ? 'Hide' : 'Show'} Prompt
+              </button>
+            </div>
+
+            {showLlmPrompt && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
+                  {llmPrompt}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </div>
     </div>

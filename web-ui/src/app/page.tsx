@@ -21,6 +21,7 @@ import {
   ComposedChart,
   Legend
 } from 'recharts';
+import { ChevronDown, ChevronUp, AlertTriangle, Copy, Check } from 'lucide-react';
 
 interface WindData {
   datetime: string;
@@ -129,10 +130,13 @@ export default function Home() {
   const [llmForecastData, setLlmForecastData] = useState<any[][] | null>(null);
   const [llmForecastLoading, setLlmForecastLoading] = useState(true);
   const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
-  const [useLlmForecast, setUseLlmForecast] = useState(true);
   const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
   const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
   const [showLlmPrompt, setShowLlmPrompt] = useState(false);
+  const [showDebugSection, setShowDebugSection] = useState(false);
+  const [showProcessedForecast, setShowProcessedForecast] = useState(false);
+  const [showRawDebugJson, setShowRawDebugJson] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Use unified wind data hook for ALL historical data (like wind-history page)
   const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
@@ -212,7 +216,6 @@ export default function Home() {
       setLlmForecastLoading(true);
       const params = new URLSearchParams();
       if (forceUpdate) params.set('force', 'true');
-      if (!useLlmForecast) params.set('test', 'true');
 
       const response = await fetch(`/api/llm-forecast?${params.toString()}`);
       const data = await response.json();
@@ -252,6 +255,84 @@ export default function Home() {
     }
   };
 
+  // Get forecast day label from offset
+  const getForecastDayLabel = (offset: number) => {
+    if (offset === -3) return '3 days ago';
+    if (offset === -2) return '2 days ago';
+    if (offset === -1) return 'Yesterday';
+    if (offset === 0) return 'Today';
+    if (offset === 1) return 'Tomorrow';
+    // For days 2-4, get the day name
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + offset);
+    return futureDate.toLocaleDateString('en-US', { weekday: 'short' });
+  };
+
+  // Helper to get looking for date (if applicable)
+  const lookingForDate = selectedForecastDay < 0 ? (() => {
+    const date = new Date();
+    date.setDate(date.getDate() + selectedForecastDay);
+    return date.toISOString().split('T')[0];
+  })() : null;
+
+  // Copy all debug information to clipboard
+  const copyDebugInfo = async () => {
+    const errorCount = [llmForecastError, windDataError, forecastError].filter(Boolean).length;
+
+    const debugReport = `
+=== CABRILLO WIND DEBUG REPORT ===
+Generated: ${new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST
+Total Errors: ${errorCount}
+
+--- LLM FORECAST METADATA ---
+${llmForecastMeta ? `
+Source: ${llmForecastMeta.source || 'Unknown'}
+Format: ${llmForecastMeta.format || 'Unknown'}
+Is LLM Generated: ${llmForecastMeta.isLLMGenerated ? 'Yes' : 'No'}
+Generated: ${llmForecastMeta.lastUpdated ? new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PST' : 'Unknown'}
+NWS Forecast Issued: ${llmForecastMeta.nwsForecastTime ? new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PST' : 'Unknown'}
+Warning: ${llmForecastMeta.warning || 'None'}
+` : 'No LLM forecast metadata available'}
+Error: ${llmForecastError || 'None'}
+
+--- WIND DATA DEBUG ---
+Data Loaded: ${allWindData ? 'Yes' : 'No'}
+${allWindData ? `Days Available: ${allWindData.length}
+Available Dates: ${allWindData.map(d => d.date).join(', ')}
+Selected Forecast Day: ${selectedForecastDay} (${getForecastDayLabel(selectedForecastDay)})
+Looking for Date: ${lookingForDate || 'N/A'}` : ''}
+Loading: ${allWindLoading ? 'Yes' : 'No'}
+Error: ${windDataError || 'None'}
+
+--- FORECAST DATA DEBUG ---
+Forecast Loaded: ${forecastData ? 'Yes' : 'No'}
+${forecastData ? `Issued Time: ${new Date(forecastData.issuedTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST
+Warnings: ${forecastData.warnings?.join(', ') || 'None'}
+Has Processed Text: ${forecastData.processed ? 'Yes' : 'No'}
+Has Original Text: ${forecastData.original ? 'Yes' : 'No'}` : ''}
+Loading: ${forecastLoading ? 'Yes' : 'No'}
+Error: ${forecastError || 'None'}
+
+${showProcessedForecast && forecastData?.processed ? `--- PROCESSED FORECAST ---
+${forecastData.processed}
+` : ''}
+
+${showLlmPrompt && llmPrompt ? `--- LLM PROMPT ---
+${llmPrompt}
+` : ''}
+  `.trim();
+
+    try {
+      await navigator.clipboard.writeText(debugReport);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy debug info:', err);
+      alert('Failed to copy to clipboard. Debug info logged to console.');
+      console.log(debugReport);
+    }
+  };
+
   useEffect(() => {
     // Fetch all data on initial load
     fetchWindData();
@@ -270,7 +351,7 @@ export default function Home() {
       clearInterval(llmForecastInterval);
       clearInterval(ageUpdateInterval);
     };
-  }, [useLlmForecast]);
+  }, []);
 
   // Note: getWindDirectionText and getWindSpeedColor now imported from @/lib/wind-utils
 
@@ -472,12 +553,13 @@ export default function Home() {
       ];
     }
 
-    if (!useLlmForecast) {
-      return allForecastData[selectedForecastDay] || allForecastData[0];
+    // Always use LLM forecast data when available
+    if (llmForecastData && llmForecastData[selectedForecastDay]) {
+      return llmForecastData[selectedForecastDay];
     }
 
-    // Return actual LLM forecast data if available, otherwise return empty array
-    return llmForecastData && llmForecastData[selectedForecastDay] ? llmForecastData[selectedForecastDay] : [];
+    // Fallback to placeholder data if LLM forecast not loaded
+    return allForecastData[selectedForecastDay] || allForecastData[0];
   };
 
   const currentForecastData = getCurrentForecastData();
@@ -749,52 +831,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* LLM Controls & Status - only show for forecast days */}
-            {selectedForecastDay >= 0 && (
-              <div className="text-right space-y-2">
-                {/* LLM Toggle */}
-                <div className="flex items-center justify-end gap-3">
-                  <label className="text-sm text-gray-600">LLM Forecast:</label>
-                  <button
-                    onClick={() => setUseLlmForecast(!useLlmForecast)}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      useLlmForecast
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {useLlmForecast ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-
-                {/* Format Selection */}
-
-
-                {/* Status Information */}
-                {llmForecastMeta && (
-                  <div className="text-xs text-gray-500">
-                    <div>
-                      <div>Source: {llmForecastMeta.source} ({llmForecastMeta.format})</div>
-                      {llmForecastMeta.isLLMGenerated && (
-                        <div>Updated: {new Date(llmForecastMeta.lastUpdated).toLocaleTimeString()}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {llmForecastError && (
-                  <div className="text-xs text-red-600">
-                    Error: {llmForecastError}
-                  </div>
-                )}
-
-                {llmForecastMeta?.warning && (
-                  <div className="text-xs text-yellow-600">
-                    ⚠️ {llmForecastMeta.warning}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Day Selection Buttons */}
@@ -817,6 +853,80 @@ export default function Home() {
               );
             })}
           </div>
+
+          {/* Forecast Metadata Display - Visible and Prominent */}
+          {selectedForecastDay >= 0 && llmForecastMeta && (
+            <div className="mb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+              <div className="text-sm space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1 flex-1">
+                    <div className="text-gray-700">
+                      <span className="font-semibold text-gray-900">Forecast generated:</span>{' '}
+                      <span className="font-medium">
+                        {new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          timeZone: 'America/Los_Angeles'
+                        })} PST
+                      </span>
+                    </div>
+                    <div className="text-gray-700">
+                      <span className="font-semibold text-gray-900">Based on NWS forecast issued:</span>{' '}
+                      <span className="font-medium">
+                        {new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          timeZone: 'America/Los_Angeles'
+                        })} PST
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <button
+                      onClick={() => fetchLlmForecast(true)}
+                      disabled={llmForecastLoading}
+                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {llmForecastLoading ? 'Updating...' : 'Refresh Forecast'}
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs pt-1 border-t border-blue-200">
+                  <span className="font-medium text-gray-600">Source: </span>
+                  <span className={`font-medium ${
+                    llmForecastMeta.source === 'fresh_llm' ? 'text-green-700' :
+                    llmForecastMeta.source?.includes('cache') ? 'text-blue-700' :
+                    llmForecastMeta.source?.includes('dummy') ? 'text-orange-700' :
+                    'text-gray-700'
+                  }`}>
+                    {llmForecastMeta.source === 'fresh_llm' ? '✓ Fresh LLM prediction' :
+                     llmForecastMeta.source === 'cache' ? '💾 Cached LLM prediction (same forecast)' :
+                     llmForecastMeta.source === 'cache_fallback' ? '💾 Cached LLM prediction (NWS unavailable)' :
+                     llmForecastMeta.source === 'cache_llm_failed' ? '💾 Cached LLM prediction (generation failed)' :
+                     llmForecastMeta.source === 'dummy_data_nws_failed' ? '⚠️ Sample data (NWS forecast unavailable)' :
+                     llmForecastMeta.source === 'dummy_data_llm_failed' ? '⚠️ Sample data (LLM generation failed)' :
+                     `${llmForecastMeta.source || 'Unknown'}`}
+                  </span>
+                  {llmForecastMeta.format && (
+                    <span className="text-gray-500 ml-2">• Format: {llmForecastMeta.format}</span>
+                  )}
+                </div>
+                {llmForecastMeta.warning && (
+                  <div className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200">
+                    ⚠️ {llmForecastMeta.warning}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -888,59 +998,7 @@ export default function Home() {
 
           {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
 
-          {/* DEBUG INFO */}
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
-            <p className="font-semibold mb-2">🐛 Debug Info:</p>
-            <div className="space-y-1">
-              <p>All wind data loaded: {allWindData ? 'Yes' : 'No'}</p>
-              <p>Error: {windDataError ? windDataError : 'None'}</p>
-              {allWindData && (
-                <>
-                  <p>Days available: {allWindData.length}</p>
-                  <p>Available dates: {allWindData.map((d: DayData) => d.date).join(', ')}</p>
-                  <p>Selected forecast day: {selectedForecastDay >= 0 ? `Day ${selectedForecastDay} (${['Today', 'Tomorrow', 'D+2', 'D+3', 'D+4'][selectedForecastDay]})` : `Historical ${Math.abs(selectedForecastDay)} days ago (${dayLabels[selectedForecastDay + 3] || 'Unknown'})`}</p>
-                  <p>Looking for date: {(() => {
-                    const now = new Date();
-                    const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
-                    const targetPacific = addDays(nowPacific, selectedForecastDay);
-                    return formatInTimeZone(targetPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
-                  })()}</p>
-                  <p>Match found: {actualWindForDay ? 'Yes' : 'No'}</p>
-                  {actualWindForDay && (
-                    <p>Hours with data: {actualWindForDay.filter(d => d.actualWindSpeed !== null).length} / 8</p>
-                  )}
-                </>
-              )}
-              {allWindLoading && <p className="text-orange-600">Loading all wind data...</p>}
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center mt-4">
-            <div className="text-xs text-gray-500 flex gap-3">
-              <span>
-                {useLlmForecast && llmForecastMeta?.isLLMGenerated ? (
-                  <span className="text-green-600">🤖 LLM-Generated Forecast</span>
-                ) : (
-                  <span>📊 Placeholder Data</span>
-                )}
-              </span>
-              {actualWindForDay && actualWindForDay.some(d => d.actualWindSpeed !== null) && (
-                <span className="text-purple-600">📈 Actual wind data overlay active</span>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => fetchLlmForecast(true)}
-                disabled={llmForecastLoading}
-                className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
-              >
-                {llmForecastLoading ? 'Updating...' : 'Refresh Forecast'}
-              </button>
-            </div>
-          </div>
         </div>
-
 
         {/* Area Forecast Section */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
@@ -956,35 +1014,17 @@ export default function Home() {
           </div>
 
           {forecastError ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="text-red-700 font-medium mb-2">Forecast Error</div>
-              <p className="text-red-600 text-sm mb-3">{forecastError}</p>
-
-              {forecastDebugInfo && (
-                <div className="mb-3">
-                  <button
-                    onClick={() => setShowForecastDebug(!showForecastDebug)}
-                    className="text-xs text-red-600 hover:text-red-800 underline"
-                  >
-                    {showForecastDebug ? 'Hide' : 'Show'} Debug Info
-                  </button>
-
-                  {showForecastDebug && (
-                    <div className="bg-gray-100 p-3 rounded mt-2 text-xs overflow-auto max-h-48">
-                      <pre className="whitespace-pre-wrap">
-                        {JSON.stringify(forecastDebugInfo, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
+            <div className="p-6 text-center">
+              <div className="text-gray-500 mb-4">Unable to load area forecast</div>
               <button
-                onClick={() => window.open('/api/area-forecast', '_blank')}
-                className="bg-red-600 text-white px-4 py-2 rounded text-xs hover:bg-red-700"
+                onClick={fetchForecastData}
+                className="text-sm bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition-colors"
               >
-                Test Forecast API
+                Retry
               </button>
+              <div className="mt-2 text-xs text-gray-500">
+                See debug section below for details
+              </div>
             </div>
           ) : forecastLoading && !forecastData ? (
             <div className="text-center py-8">
@@ -1004,14 +1044,6 @@ export default function Home() {
                   </ul>
                 </div>
               )}
-
-              {/* Processed Forecast */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Processed Forecast</h4>
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
-                  {forecastData.processed}
-                </pre>
-              </div>
 
               {/* Original Forecast Toggle */}
               <div className="text-center mb-4">
@@ -1043,28 +1075,271 @@ export default function Home() {
           ) : null}
         </div>
 
-        {/* LLM Prompt Section */}
-        {llmPrompt && (
-          <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">LLM Prompt</h3>
-              <button
-                onClick={() => setShowLlmPrompt(!showLlmPrompt)}
-                className="text-sm text-blue-600 hover:text-blue-800 underline"
-              >
-                {showLlmPrompt ? 'Hide' : 'Show'} Prompt
-              </button>
+        {/* ========================================
+            CONSOLIDATED DEBUG SECTION
+            ======================================== */}
+        <div className={`mt-8 bg-white rounded-lg shadow-lg overflow-hidden border-l-4 ${
+          (llmForecastError || windDataError || forecastError) ? 'border-red-500' : 'border-gray-300'
+        }`}>
+          {/* Debug Section Header - Always Visible */}
+          <div
+            className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={() => setShowDebugSection(!showDebugSection)}
+          >
+            <div className="flex items-center space-x-3">
+              {showDebugSection ? (
+                <ChevronUp className="w-5 h-5 text-gray-600" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-600" />
+              )}
+              <h3 className="text-lg font-semibold text-gray-900">
+                Debug & Technical Information
+              </h3>
+              {/* Error Badge */}
+              {(llmForecastError || windDataError || forecastError) && (
+                <span className="inline-flex items-center space-x-1 text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>
+                    {[llmForecastError, windDataError, forecastError].filter(Boolean).length} error(s)
+                  </span>
+                </span>
+              )}
             </div>
-
-            {showLlmPrompt && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
-                  {llmPrompt}
-                </pre>
-              </div>
+            {showDebugSection && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  copyDebugInfo();
+                }}
+                className="flex items-center space-x-2 text-sm bg-gray-600 text-white px-3 py-1.5 rounded hover:bg-gray-700 transition-colors"
+              >
+                {copySuccess ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copy Debug Info</span>
+                  </>
+                )}
+              </button>
             )}
           </div>
-        )}
+
+          {/* Debug Section Content - Collapsible */}
+          {showDebugSection && (
+            <div className="p-6 space-y-6 bg-gray-50 border-t border-gray-200">
+
+              {/* 1. LLM Forecast Metadata */}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">1</span>
+                  LLM Forecast Metadata
+                </h4>
+                <div className="space-y-2 text-sm font-mono">
+                  {llmForecastMeta ? (
+                    <>
+                      <div className="flex">
+                        <span className="text-gray-600 w-32">Source:</span>
+                        <span className="text-gray-900 font-semibold">{llmForecastMeta.source || 'Unknown'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-32">Format:</span>
+                        <span className="text-gray-900">{llmForecastMeta.format || 'Unknown'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-32">Is LLM Generated:</span>
+                        <span className="text-gray-900">{llmForecastMeta.isLLMGenerated ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-32">Generated:</span>
+                        <span className="text-gray-900">
+                          {llmForecastMeta.lastUpdated
+                            ? new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PST'
+                            : 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-32">NWS Issued:</span>
+                        <span className="text-gray-900">
+                          {llmForecastMeta.nwsForecastTime
+                            ? new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }) + ' PST'
+                            : 'Unknown'}
+                        </span>
+                      </div>
+                      {llmForecastMeta.warning && (
+                        <div className="flex">
+                          <span className="text-gray-600 w-32">Warning:</span>
+                          <span className="text-orange-700 font-medium">{llmForecastMeta.warning}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-gray-500 italic">No LLM forecast metadata available</div>
+                  )}
+                  {llmForecastError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                      <div className="flex">
+                        <span className="text-red-600 w-32 font-semibold">Error:</span>
+                        <span className="text-red-700">{llmForecastError}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Wind Data Debug */}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">2</span>
+                  Wind Data Debug
+                </h4>
+                <div className="space-y-2 text-sm font-mono">
+                  <div className="flex">
+                    <span className="text-gray-600 w-48">Data Loaded:</span>
+                    <span className="text-gray-900 font-semibold">{allWindData ? 'Yes' : 'No'}</span>
+                  </div>
+                  {allWindData && (
+                    <>
+                      <div className="flex">
+                        <span className="text-gray-600 w-48">Days Available:</span>
+                        <span className="text-gray-900">{allWindData.length}</span>
+                      </div>
+                      <div className="flex flex-wrap">
+                        <span className="text-gray-600 w-48">Available Dates:</span>
+                        <span className="text-gray-900 flex-1">{allWindData.map(d => d.date).join(', ')}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-48">Selected Forecast Day:</span>
+                        <span className="text-gray-900">{selectedForecastDay} ({getForecastDayLabel(selectedForecastDay)})</span>
+                      </div>
+                      {lookingForDate && (
+                        <div className="flex">
+                          <span className="text-gray-600 w-48">Looking for Date:</span>
+                          <span className="text-gray-900">{lookingForDate}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <div className="flex">
+                    <span className="text-gray-600 w-48">Loading:</span>
+                    <span className="text-gray-900">{allWindLoading ? 'Yes' : 'No'}</span>
+                  </div>
+                  {windDataError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                      <div className="flex">
+                        <span className="text-red-600 w-48 font-semibold">Error:</span>
+                        <span className="text-red-700">{windDataError}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. Forecast Data Debug */}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">3</span>
+                  Forecast Data Debug
+                </h4>
+                <div className="space-y-2 text-sm font-mono">
+                  <div className="flex">
+                    <span className="text-gray-600 w-48">Forecast Loaded:</span>
+                    <span className="text-gray-900 font-semibold">{forecastData ? 'Yes' : 'No'}</span>
+                  </div>
+                  {forecastData && (
+                    <>
+                      <div className="flex">
+                        <span className="text-gray-600 w-48">Issued Time:</span>
+                        <span className="text-gray-900">
+                          {new Date(forecastData.issuedTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })} PST
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap">
+                        <span className="text-gray-600 w-48">Warnings:</span>
+                        <span className="text-gray-900 flex-1">{forecastData.warnings?.join(', ') || 'None'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-48">Has Processed Text:</span>
+                        <span className="text-gray-900">{forecastData.processed ? 'Yes' : 'No'}</span>
+                      </div>
+                      <div className="flex">
+                        <span className="text-gray-600 w-48">Has Original Text:</span>
+                        <span className="text-gray-900">{forecastData.original ? 'Yes' : 'No'}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex">
+                    <span className="text-gray-600 w-48">Loading:</span>
+                    <span className="text-gray-900">{forecastLoading ? 'Yes' : 'No'}</span>
+                  </div>
+                  {forecastError && (
+                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                      <div className="flex">
+                        <span className="text-red-600 w-48 font-semibold">Error:</span>
+                        <span className="text-red-700">{forecastError}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Processed Forecast - Collapsible */}
+              {forecastData?.processed && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setShowProcessedForecast(!showProcessedForecast)}
+                  >
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center">
+                      <span className="w-6 h-6 bg-yellow-100 text-yellow-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">4</span>
+                      Processed Forecast (LLM Input)
+                    </h4>
+                    {showProcessedForecast ? (
+                      <ChevronUp className="w-4 h-4 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-600" />
+                    )}
+                  </div>
+                  {showProcessedForecast && (
+                    <div className="mt-3 p-3 bg-gray-900 text-green-400 rounded font-mono text-xs whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto">
+                      {forecastData.processed}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 5. LLM Prompt - Collapsible */}
+              {llmPrompt && (
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setShowLlmPrompt(!showLlmPrompt)}
+                  >
+                    <h4 className="text-sm font-semibold text-gray-900 flex items-center">
+                      <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">5</span>
+                      LLM Prompt
+                    </h4>
+                    {showLlmPrompt ? (
+                      <ChevronUp className="w-4 h-4 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-600" />
+                    )}
+                  </div>
+                  {showLlmPrompt && (
+                    <div className="mt-3 p-3 bg-gray-900 text-blue-400 rounded font-mono text-xs whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto">
+                      {llmPrompt}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          )}
+        </div>
+
         </div>
       </div>
     </div>

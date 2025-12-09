@@ -6,10 +6,12 @@
     "forecast": 2500,
     "validation": 2000
   },
+  "useDummyForecastWhenUnavailable": false,
   "description": "LLM model configuration for wind forecasting",
   "notes": {
     "temperature": "Range 0.0-1.0. Higher = more random/creative, Lower = more deterministic. Default: 1.0",
     "top_p": "Nucleus sampling. Range 0.0-1.0. Lower = more constrained vocabulary. Default: 1.0 (no constraint)",
-    "model": "Claude Sonnet 4 model identifier"
+    "model": "Claude Sonnet 4 model identifier",
+    "useDummyForecastWhenUnavailable": "If true, return realistic dummy forecast data when LLM forecast fails and no cache available. DEFAULT: false for production safety. Use for development/testing only."
   }
 }

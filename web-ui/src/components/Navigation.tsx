@@ -13,12 +13,11 @@ interface WindData {
   windSpeed?: number;
   gustSpeed?: number;
   windDirection?: number;
-  airTemp?: number;
   isOld?: boolean;
   ageMinutes?: number;
 }
 
-// Custom hook for wind data with fallback logic
+// Custom hook for wind data using NOAA API observations
 function useWindData() {
   const [windData, setWindData] = useState<WindData>({});
   const [loading, setLoading] = useState(true);
@@ -26,28 +25,7 @@ function useWindData() {
   useEffect(() => {
     const fetchWindData = async () => {
       try {
-        // Primary source: /api/wind-data (has air temp)
-        const response = await fetch('/api/wind-data');
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          setWindData({
-            windSpeed: result.data.windSpeed || undefined,
-            gustSpeed: result.data.gustSpeed || undefined,
-            windDirection: result.data.windDirection || undefined,
-            airTemp: result.data.airTemp || undefined,
-            isOld: result.dataAge?.isOld || false,
-            ageMinutes: result.dataAge?.minutes || undefined,
-          });
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.log('Primary wind data source failed, trying fallback...');
-      }
-
-      try {
-        // Fallback source: /api/noaa-observations
+        // Use NOAA observations API (same as Debug page)
         const response = await fetch('/api/noaa-observations');
         const result = await response.json();
 
@@ -56,13 +34,14 @@ function useWindData() {
             windSpeed: result.data.windSpeed || undefined,
             gustSpeed: result.data.windGust || undefined,
             windDirection: result.data.windDirection || undefined,
-            airTemp: undefined, // Not available in NOAA observations
             isOld: result.dataAge?.isOld || false,
             ageMinutes: result.dataAge?.minutes || undefined,
           });
+        } else {
+          console.error('NOAA observations API failed:', result.message || 'Unknown error');
         }
       } catch (error) {
-        console.error('Both wind data sources failed:', error);
+        console.error('Error fetching wind data from NOAA API:', error);
       } finally {
         setLoading(false);
       }
@@ -77,14 +56,21 @@ function useWindData() {
   return { windData, loading };
 }
 
-// Wind direction arrow component
+// Wind direction arrow component (using same polygon as forecast plot)
 const WindDirectionArrow = ({ direction, size = 16 }: { direction: number; size?: number }) => (
   <div
     className="inline-flex items-center justify-center"
     style={{ transform: `rotate(${direction + 180}deg)` }}
     title={`${direction}°`}
   >
-    <NavigationIcon size={size} className="text-purple-600" />
+    <svg width={size} height={size} viewBox="-8 -12 16 20">
+      <polygon
+        points="0,-12 -6,6 0,2 6,6"
+        fill="#374151"
+        stroke="white"
+        strokeWidth="1"
+      />
+    </svg>
   </div>
 );
 
@@ -120,45 +106,33 @@ const CompactWindDisplay = ({ windData, loading }: { windData: WindData; loading
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      {/* Status indicator */}
-      <div className={`w-2 h-2 rounded-full ${windData.isOld ? 'bg-orange-400' : 'bg-green-400'}`}></div>
-
-      {/* Priority 1: Wind Speed & Gust (Always show if available) */}
+    <div className="flex items-center space-x-3">
+      {/* Wind Speed & Gust - Debug page format */}
       {windData.windSpeed !== undefined && (
-        <div className="flex items-center space-x-1">
-          <Wind size={14} className="text-purple-600" />
-          <span className="text-xs font-medium text-gray-800">
+        <div className="text-center">
+          <div className="text-lg font-bold text-gray-800">
             {Math.round(windData.windSpeed)}
             {windData.gustSpeed && windData.gustSpeed > windData.windSpeed && (
               <span className="text-red-600">/{Math.round(windData.gustSpeed)}</span>
             )}
-            <span className="text-gray-500">kt</span>
-          </span>
+            <span className="text-sm text-gray-600 ml-1">kt</span>
+          </div>
+          <div className="text-xs text-gray-600">Wind</div>
         </div>
       )}
 
-      {/* Priority 2: Direction (Hidden on very small screens) */}
+      {/* Direction Arrow - Debug page style (Hidden on very small screens) */}
       {windData.windDirection !== undefined && (
-        <div className="hidden min-[400px]:flex items-center">
-          <WindDirectionArrow direction={windData.windDirection} size={14} />
-        </div>
-      )}
-
-      {/* Priority 3: Air Temperature (Hidden on small screens) */}
-      {windData.airTemp !== undefined && windData.airTemp > 0 && (
-        <div className="hidden sm:flex items-center">
-          <span className="text-xs text-gray-600">
-            {Math.round(windData.airTemp)}°F
-          </span>
+        <div className="hidden min-[400px]:flex items-center justify-center">
+          <WindDirectionArrow direction={windData.windDirection} size={28} />
         </div>
       )}
 
       {/* Warning for old data */}
       {windData.isOld && windData.ageMinutes !== undefined && (
         <div className="flex items-center space-x-1">
-          <AlertTriangle size={12} className="text-orange-500" />
-          <span className="text-xs text-orange-600 hidden min-[500px]:inline">
+          <AlertTriangle size={18} className="text-orange-500" />
+          <span className="text-sm text-orange-600 hidden min-[500px]:inline">
             {formatDataAge(windData.ageMinutes)}
           </span>
         </div>
@@ -216,7 +190,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
               {/* Logo/Brand */}
               <Link href="/" className="flex items-center space-x-2">
                 <Wind className="h-8 w-8 text-purple-600" />
-                <span className="text-xl font-bold text-gray-900">WindForecast</span>
+                <span className="text-xl font-bold text-gray-900">Cabrillo Wind</span>
               </Link>
 
               {/* Center - Compact Wind Display */}
@@ -278,8 +252,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
               {/* Logo/Brand */}
               <Link href="/" className="flex items-center space-x-2">
                 <Wind className="h-8 w-8 text-purple-600" />
-                <span className="text-xl font-bold text-gray-900">WindForecast AGXC1</span>
-                <span className="text-sm text-gray-500 ml-2">Los Angeles</span>
+                <span className="text-xl font-bold text-gray-900">Cabrillo Wind Forecast</span>
               </Link>
 
               {/* Center - Compact Wind Display */}

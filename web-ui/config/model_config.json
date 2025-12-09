@@ -6,7 +6,7 @@
     "forecast": 2500,
     "validation": 2000
   },
-  "useDummyForecastWhenUnavailable": false,
+  "useDummyForecastWhenUnavailable": true,
   "description": "LLM model configuration for wind forecasting",
   "notes": {
     "temperature": "Range 0.0-1.0. Higher = more random/creative, Lower = more deterministic. Default: 1.0",

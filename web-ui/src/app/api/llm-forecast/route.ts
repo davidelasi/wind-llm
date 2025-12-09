@@ -8,6 +8,7 @@ import {
   convertPeriodsToRelative,
   formatForecastForLLM
 } from '@/lib/forecast-utils';
+import { generateDummyForecast } from '@/lib/dummy-forecast-generator';
 
 // Load model configuration
 const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
@@ -553,6 +554,33 @@ export async function GET(request: NextRequest) {
         });
       }
 
+      // Check if dummy forecast fallback is enabled
+      const modelConfig = await loadModelConfig();
+      const useDummy = modelConfig.useDummyForecastWhenUnavailable === true ||
+                       process.env.ENABLE_DUMMY_FORECAST === 'true';
+
+      if (useDummy) {
+        console.log('[LLM-FORECAST] NWS fetch failed, returning dummy forecast data (config enabled)');
+        const dummyPredictions = generateDummyForecast();
+
+        await sendErrorEmail('Failed to fetch NWS forecast - serving dummy data', {
+          timestamp: new Date().toISOString(),
+          note: 'Dummy data fallback enabled in configuration'
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            predictions: dummyPredictions,
+            isLLMGenerated: false,
+            lastUpdated: new Date().toISOString(),
+            nwsForecastTime: new Date().toISOString(),
+            source: 'dummy_data_nws_failed',
+            warning: '⚠️ DUMMY DATA - NWS forecast unavailable, showing sample data for development'
+          }
+        });
+      }
+
       await sendErrorEmail('Failed to fetch NWS forecast', { timestamp: new Date().toISOString() });
       return NextResponse.json({
         success: false,
@@ -618,6 +646,34 @@ export async function GET(request: NextRequest) {
             source: 'cache_llm_failed',
             warning: 'LLM forecast generation failed, using cached data',
             llmPrompt: forecastCache.llmPrompt
+          }
+        });
+      }
+
+      // Check if dummy forecast fallback is enabled
+      const modelConfig = await loadModelConfig();
+      const useDummy = modelConfig.useDummyForecastWhenUnavailable === true ||
+                       process.env.ENABLE_DUMMY_FORECAST === 'true';
+
+      if (useDummy) {
+        console.log('[LLM-FORECAST] LLM generation failed, returning dummy forecast data (config enabled)');
+        const dummyPredictions = generateDummyForecast();
+
+        await sendErrorEmail('LLM forecast generation failed - serving dummy data', {
+          forecastText: innerWatersForecast,
+          timestamp: new Date().toISOString(),
+          note: 'Dummy data fallback enabled in configuration'
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            predictions: dummyPredictions,
+            isLLMGenerated: false,
+            lastUpdated: new Date().toISOString(),
+            nwsForecastTime: nwsForecast.issuedTime,
+            source: 'dummy_data_llm_failed',
+            warning: '⚠️ DUMMY DATA - LLM forecast generation failed, showing sample data for development'
           }
         });
       }

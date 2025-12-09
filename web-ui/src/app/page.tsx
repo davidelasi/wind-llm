@@ -21,7 +21,7 @@ import {
   ComposedChart,
   Legend
 } from 'recharts';
-import { ChevronDown, ChevronUp, AlertTriangle, Copy, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, AlertTriangle, Copy, Check } from 'lucide-react';
 
 interface WindData {
   datetime: string;
@@ -137,6 +137,13 @@ export default function Home() {
   const [showProcessedForecast, setShowProcessedForecast] = useState(false);
   const [showRawDebugJson, setShowRawDebugJson] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
 
   // Use unified wind data hook for ALL historical data (like wind-history page)
   const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
@@ -331,6 +338,33 @@ ${llmPrompt}
       alert('Failed to copy to clipboard. Debug info logged to console.');
       console.log(debugReport);
     }
+  };
+
+  // Swipe gesture handlers for day navigation
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && selectedForecastDay < 4) {
+      setSelectedForecastDay(selectedForecastDay + 1);
+    } else if (isRightSwipe && selectedForecastDay > -3) {
+      setSelectedForecastDay(selectedForecastDay - 1);
+    }
+
+    setTouchStart(null);
+    setTouchEnd(null);
   };
 
   useEffect(() => {
@@ -536,6 +570,31 @@ ${llmPrompt}
   };
 
   const dayLabels = getDayLabels();
+
+  // Get day name for single day (used by arrow navigation)
+  const getDayLabel = (offset: number): string => {
+    if (offset === 0) return 'Today';
+    if (offset === 1) return 'Tomorrow';
+    if (offset === -1) return 'Yesterday';
+    if (offset === -2) return '2 days ago';
+    if (offset === -3) return '3 days ago';
+
+    // For D+2, D+3, D+4: show day of week
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return date.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+
+  // Get formatted date for single day (e.g., "Dec 8, 2025")
+  const getDateLabel = (offset: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
 
   // Get forecast data based on mode
   const getCurrentForecastData = () => {
@@ -833,106 +892,132 @@ ${llmPrompt}
 
           </div>
 
-          {/* Day Selection Buttons */}
-          <div className="flex justify-center gap-2 mb-6">
-            {dayLabels.map((label, index) => {
-              // Convert button index to actual day offset (-3 to +4)
-              const dayOffset = index - 3;
-              return (
-                <button
-                  key={index}
-                  onClick={() => setSelectedForecastDay(dayOffset)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedForecastDay === dayOffset
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          {/* Day Navigation - Mobile-First Arrow Design */}
+          <div className="flex items-center justify-center gap-2 md:gap-3 mb-4">
+            {/* Left Arrow */}
+            <button
+              onClick={() => setSelectedForecastDay(Math.max(-3, selectedForecastDay - 1))}
+              disabled={selectedForecastDay <= -3}
+              className={`
+                flex items-center justify-center
+                min-w-[44px] min-h-[44px] md:min-w-[48px] md:min-h-[48px]
+                rounded-lg transition-all
+                ${selectedForecastDay <= -3
+                  ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
+                }
+              `}
+              aria-label="Previous day"
+            >
+              <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
+
+            {/* Day Label - Two Lines */}
+            <div className="flex flex-col items-center min-w-[120px] md:min-w-[160px] text-center">
+              <div className="text-base md:text-lg font-semibold text-gray-900">
+                {getDayLabel(selectedForecastDay)}
+              </div>
+              <div className="text-xs md:text-sm text-gray-600">
+                {getDateLabel(selectedForecastDay)}
+              </div>
+            </div>
+
+            {/* Right Arrow */}
+            <button
+              onClick={() => setSelectedForecastDay(Math.min(4, selectedForecastDay + 1))}
+              disabled={selectedForecastDay >= 4}
+              className={`
+                flex items-center justify-center
+                min-w-[44px] min-h-[44px] md:min-w-[48px] md:min-h-[48px]
+                rounded-lg transition-all
+                ${selectedForecastDay >= 4
+                  ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 shadow-sm'
+                }
+              `}
+              aria-label="Next day"
+            >
+              <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+            </button>
           </div>
 
-          {/* Forecast Metadata Display - Visible and Prominent */}
+          {/* Forecast Metadata Display - Simplified */}
           {selectedForecastDay >= 0 && llmForecastMeta && (
-            <div className="mb-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
-              <div className="text-sm space-y-2">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <div className="text-gray-700">
-                      <span className="font-semibold text-gray-900">Forecast generated:</span>{' '}
-                      <span className="font-medium">
-                        {new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          timeZone: 'America/Los_Angeles'
-                        })} PST
-                      </span>
-                    </div>
-                    <div className="text-gray-700">
-                      <span className="font-semibold text-gray-900">Based on NWS forecast issued:</span>{' '}
-                      <span className="font-medium">
-                        {new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                          timeZone: 'America/Los_Angeles'
-                        })} PST
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-right ml-4">
-                    <button
-                      onClick={() => fetchLlmForecast(true)}
-                      disabled={llmForecastLoading}
-                      className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {llmForecastLoading ? 'Updating...' : 'Refresh Forecast'}
-                    </button>
-                  </div>
-                </div>
-                <div className="text-xs pt-1 border-t border-blue-200">
-                  <span className="font-medium text-gray-600">Source: </span>
-                  <span className={`font-medium ${
-                    llmForecastMeta.source === 'fresh_llm' ? 'text-green-700' :
-                    llmForecastMeta.source?.includes('cache') ? 'text-blue-700' :
-                    llmForecastMeta.source?.includes('dummy') ? 'text-orange-700' :
-                    'text-gray-700'
-                  }`}>
-                    {llmForecastMeta.source === 'fresh_llm' ? '✓ Fresh LLM prediction' :
-                     llmForecastMeta.source === 'cache' ? '💾 Cached LLM prediction (same forecast)' :
-                     llmForecastMeta.source === 'cache_fallback' ? '💾 Cached LLM prediction (NWS unavailable)' :
-                     llmForecastMeta.source === 'cache_llm_failed' ? '💾 Cached LLM prediction (generation failed)' :
-                     llmForecastMeta.source === 'dummy_data_nws_failed' ? '⚠️ Sample data (NWS forecast unavailable)' :
-                     llmForecastMeta.source === 'dummy_data_llm_failed' ? '⚠️ Sample data (LLM generation failed)' :
-                     `${llmForecastMeta.source || 'Unknown'}`}
-                  </span>
-                  {llmForecastMeta.format && (
-                    <span className="text-gray-500 ml-2">• Format: {llmForecastMeta.format}</span>
-                  )}
-                </div>
-                {llmForecastMeta.warning && (
-                  <div className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200">
-                    ⚠️ {llmForecastMeta.warning}
-                  </div>
+            <div className="mb-4 space-y-1 text-xs md:text-sm">
+              {/* Generation timestamp */}
+              <div className="text-gray-700">
+                <span className="font-medium text-gray-900">Forecast generated:</span>{' '}
+                {new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZone: 'America/Los_Angeles'
+                })} PST
+              </div>
+
+              {/* NWS issuance timestamp */}
+              <div className="text-gray-700">
+                <span className="font-medium text-gray-900">Based on NWS forecast:</span>{' '}
+                {new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZone: 'America/Los_Angeles'
+                })} PST
+              </div>
+
+              {/* Source indicator */}
+              <div className="text-xs text-gray-600">
+                <span className="font-medium">Source: </span>
+                <span className={`${
+                  llmForecastMeta.source === 'fresh_llm' ? 'text-green-700' :
+                  llmForecastMeta.source?.includes('cache') ? 'text-blue-700' :
+                  llmForecastMeta.source?.includes('dummy') ? 'text-orange-700' :
+                  'text-gray-700'
+                }`}>
+                  {llmForecastMeta.source === 'fresh_llm' ? '✓ Fresh LLM prediction' :
+                   llmForecastMeta.source === 'cache' ? '💾 Cached' :
+                   llmForecastMeta.source === 'cache_fallback' ? '💾 Cached (NWS unavailable)' :
+                   llmForecastMeta.source === 'cache_llm_failed' ? '💾 Cached (generation failed)' :
+                   llmForecastMeta.source === 'dummy_data_nws_failed' ? '⚠️ Sample data (NWS unavailable)' :
+                   llmForecastMeta.source === 'dummy_data_llm_failed' ? '⚠️ Sample data (LLM failed)' :
+                   `${llmForecastMeta.source || 'Unknown'}`}
+                </span>
+                {llmForecastMeta.format && (
+                  <span className="text-gray-500 ml-1">• {llmForecastMeta.format}</span>
                 )}
               </div>
+
+              {/* Warning (if present) */}
+              {llmForecastMeta.warning && (
+                <div className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200 inline-block">
+                  ⚠️ {llmForecastMeta.warning}
+                </div>
+              )}
             </div>
           )}
 
-          <div className="h-80 w-full">
+          {/* Y-Axis Label - Horizontal Above Chart */}
+          <div className="flex justify-start mb-2 ml-2">
+            <span className="text-xs md:text-sm font-medium text-gray-700">
+              Wind Speed (knots)
+            </span>
+          </div>
+
+          <div
+            className="h-80 w-full touch-pan-y"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
-                margin={{ top: 30, right: 20, left: 20, bottom: 20 }}
+                margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -948,12 +1033,6 @@ ${llmPrompt}
                   tick={{ fontSize: 12, fill: '#374151' }}
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={{ stroke: '#9ca3af' }}
-                  label={{
-                    value: 'Wind Speed (knots)',
-                    angle: -90,
-                    position: 'insideLeft',
-                    style: { textAnchor: 'middle', fill: '#374151' }
-                  }}
                 />
                 <Tooltip content={<CustomForecastTooltip />} />
                 <Legend
@@ -1106,25 +1185,52 @@ ${llmPrompt}
               )}
             </div>
             {showDebugSection && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  copyDebugInfo();
-                }}
-                className="flex items-center space-x-2 text-sm bg-gray-600 text-white px-3 py-1.5 rounded hover:bg-gray-700 transition-colors"
-              >
-                {copySuccess ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Debug Info</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Refresh Forecast Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fetchLlmForecast(true);
+                  }}
+                  disabled={llmForecastLoading}
+                  className="flex items-center space-x-2 text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {llmForecastLoading ? (
+                    <>
+                      <div className="w-3 h-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Refresh Forecast</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Copy Debug Info button (existing) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    copyDebugInfo();
+                  }}
+                  className="flex items-center space-x-2 text-sm bg-gray-600 text-white px-3 py-1.5 rounded hover:bg-gray-700 transition-colors"
+                >
+                  {copySuccess ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Debug Info</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
 

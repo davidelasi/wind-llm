@@ -723,10 +723,23 @@ ${llmPrompt}
       return null;
     }
 
-    // Generate ALL possible 6-minute time slots from 10:00 to 18:00 (81 points total)
+    // Generate ALL possible 6-minute time slots from 9:30 to 18:30 (91 points total)
     const allTimeSlots = [];
-    for (let hour = 10; hour <= 18; hour++) {
-      const minutesInHour = hour === 18 ? [0] : [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
+
+    // Start at 9:30 AM
+    for (let hour = 9; hour <= 18; hour++) {
+      let minutesInHour;
+      if (hour === 9) {
+        // 9:30, 9:36, 9:42, 9:48, 9:54
+        minutesInHour = [30, 36, 42, 48, 54];
+      } else if (hour === 18) {
+        // 6:00, 6:06, 6:12, 6:18, 6:24, 6:30
+        minutesInHour = [0, 6, 12, 18, 24, 30];
+      } else {
+        // All other hours: full 10 points
+        minutesInHour = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
+      }
+
       for (const minute of minutesInHour) {
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
         const dateTime = new Date(`${todayKey}T${timeStr}`);
@@ -740,10 +753,10 @@ ${llmPrompt}
       }
     }
 
-    // Create a map of actual data for quick lookup
+    // Create a map of actual data for quick lookup (include all hours from 9-18)
     const actualDataMap = new Map(
       todayData.hourlyData
-        .filter(point => point.hour >= 10 && point.hour <= 18)
+        .filter(point => point.hour >= 9 && point.hour <= 18)
         .map(point => {
           const dateTime = new Date(`${point.date}T${point.time}`);
           const key = `${dateTime.getHours()}-${dateTime.getMinutes()}`;
@@ -752,7 +765,7 @@ ${llmPrompt}
     );
 
     // Fill in all time slots with actual data or null
-    const dataPoints = allTimeSlots.map(slot => {
+    return allTimeSlots.map(slot => {
       const key = `${slot.hour}-${slot.minute}`;
       const actualPoint = actualDataMap.get(key);
 
@@ -764,24 +777,6 @@ ${llmPrompt}
         windDirectionText: actualPoint?.windDirectionText ?? null
       };
     });
-
-    // Add padding points from 9:30-10:00 AM and 6:00-6:30 PM to extend the axis display
-    const paddingStart = [
-      { time: '9:30 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '9:36 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '9:42 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '9:48 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '9:54 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null }
-    ];
-    const paddingEnd = [
-      { time: '6:06 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '6:12 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '6:18 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '6:24 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
-      { time: '6:30 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null }
-    ];
-
-    return [...paddingStart, ...dataPoints, ...paddingEnd];
   };
 
   const todaysGranularData = getTodaysGranularData();

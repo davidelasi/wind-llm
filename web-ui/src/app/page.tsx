@@ -723,10 +723,10 @@ ${llmPrompt}
       return null;
     }
 
-    // Generate ALL possible 6-minute time slots from 9:00 to 19:00 (101 points total)
+    // Generate ALL possible 6-minute time slots from 10:00 to 18:00 (81 points total)
     const allTimeSlots = [];
-    for (let hour = 9; hour <= 19; hour++) {
-      const minutesInHour = hour === 19 ? [0] : [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
+    for (let hour = 10; hour <= 18; hour++) {
+      const minutesInHour = hour === 18 ? [0] : [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
       for (const minute of minutesInHour) {
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
         const dateTime = new Date(`${todayKey}T${timeStr}`);
@@ -743,7 +743,7 @@ ${llmPrompt}
     // Create a map of actual data for quick lookup
     const actualDataMap = new Map(
       todayData.hourlyData
-        .filter(point => point.hour >= 9 && point.hour <= 19)
+        .filter(point => point.hour >= 10 && point.hour <= 18)
         .map(point => {
           const dateTime = new Date(`${point.date}T${point.time}`);
           const key = `${dateTime.getHours()}-${dateTime.getMinutes()}`;
@@ -752,7 +752,7 @@ ${llmPrompt}
     );
 
     // Fill in all time slots with actual data or null
-    return allTimeSlots.map(slot => {
+    const dataPoints = allTimeSlots.map(slot => {
       const key = `${slot.hour}-${slot.minute}`;
       const actualPoint = actualDataMap.get(key);
 
@@ -764,6 +764,24 @@ ${llmPrompt}
         windDirectionText: actualPoint?.windDirectionText ?? null
       };
     });
+
+    // Add padding points for 9:30 AM and 6:30 PM to extend the axis display
+    const paddingStart = {
+      time: '9:30 AM',
+      windSpeed: null,
+      gustSpeed: null,
+      windDirection: null,
+      windDirectionText: null
+    };
+    const paddingEnd = {
+      time: '6:30 PM',
+      windSpeed: null,
+      gustSpeed: null,
+      windDirection: null,
+      windDirectionText: null
+    };
+
+    return [paddingStart, ...dataPoints, paddingEnd];
   };
 
   const todaysGranularData = getTodaysGranularData();
@@ -1249,7 +1267,7 @@ ${llmPrompt}
                     Current Conditions
                   </h2>
                   <p className="text-sm text-gray-600 mt-1">
-                    Today's actual wind data at 6-minute intervals (9 AM - 7 PM PST)
+                    Today's actual wind data at 6-minute intervals (10 AM - 6 PM PST)
                   </p>
                 </div>
 
@@ -1265,8 +1283,7 @@ ${llmPrompt}
                         tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                         axisLine={{ stroke: '#9ca3af' }}
                         tickLine={{ stroke: '#9ca3af' }}
-                        interval="preserveStartEnd"
-                        ticks={['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM']}
+                        ticks={['10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM']}
                       />
                       <YAxis
                         width={35}

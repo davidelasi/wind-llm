@@ -1059,7 +1059,7 @@ ${llmPrompt}
           {/* Title */}
           <div className="text-center mb-4">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-              Cabrillo Wind Forecast
+              Wind Forecast and Historic Data (knots)
             </h1>
           </div>
 
@@ -1163,12 +1163,6 @@ ${llmPrompt}
             </>
           )}
 
-          {/* Chart Title */}
-          <div className="text-center mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-              Wind Speed (knots)
-            </h2>
-          </div>
 
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -1275,7 +1269,7 @@ ${llmPrompt}
               <div className="mt-6">
                 <div className="mb-4 mx-2">
                   <h2 className="text-xl font-semibold text-gray-800 text-center">
-                    Current Conditions
+                    Current Wind Conditions (knots)
                   </h2>
                 </div>
 
@@ -1292,7 +1286,7 @@ ${llmPrompt}
                         tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                         axisLine={{ stroke: '#9ca3af' }}
                         tickLine={{ stroke: '#9ca3af' }}
-                        ticks={['12 AM', '3 AM', '6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM']}
+                        ticks={['12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM']}
                       />
                       <YAxis
                         width={35}

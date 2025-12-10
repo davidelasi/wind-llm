@@ -723,22 +723,12 @@ ${llmPrompt}
       return null;
     }
 
-    // Generate ALL possible 6-minute time slots from 9:30 to 18:30 (91 points total)
+    // Generate ALL possible 6-minute time slots for 24 hours (240 points total)
     const allTimeSlots = [];
 
-    // Start at 9:30 AM
-    for (let hour = 9; hour <= 18; hour++) {
-      let minutesInHour;
-      if (hour === 9) {
-        // 9:30, 9:36, 9:42, 9:48, 9:54
-        minutesInHour = [30, 36, 42, 48, 54];
-      } else if (hour === 18) {
-        // 6:00, 6:06, 6:12, 6:18, 6:24, 6:30
-        minutesInHour = [0, 6, 12, 18, 24, 30];
-      } else {
-        // All other hours: full 10 points
-        minutesInHour = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
-      }
+    // Generate all hours from 0 (midnight) to 23 (11 PM)
+    for (let hour = 0; hour <= 23; hour++) {
+      const minutesInHour = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
 
       for (const minute of minutesInHour) {
         const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
@@ -753,10 +743,9 @@ ${llmPrompt}
       }
     }
 
-    // Create a map of actual data for quick lookup (include all hours from 9-18)
+    // Create a map of actual data for quick lookup (include all hours)
     const actualDataMap = new Map(
       todayData.hourlyData
-        .filter(point => point.hour >= 9 && point.hour <= 18)
         .map(point => {
           const dateTime = new Date(`${point.date}T${point.time}`);
           const key = `${dateTime.getHours()}-${dateTime.getMinutes()}`;
@@ -1290,11 +1279,10 @@ ${llmPrompt}
                       <XAxis
                         dataKey="time"
                         type="category"
-                        domain={['9:30 AM', '6:30 PM']}
                         tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                         axisLine={{ stroke: '#9ca3af' }}
                         tickLine={{ stroke: '#9ca3af' }}
-                        ticks={['10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM']}
+                        ticks={['12 AM', '3 AM', '6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM']}
                       />
                       <YAxis
                         width={35}
@@ -1350,7 +1338,7 @@ ${llmPrompt}
           <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 leading-relaxed">
               <span className="font-medium text-blue-900">Note:</span>{' '}
-              The above diagram displays the real-time data of the AGXC1, gathered every 6 minutes. Occasionally, sensor malfunction result in missing data, which are shown as gaps on the plot.
+              The above diagram displays the 24-hour real-time data of the AGXC1, gathered every 6 minutes. Occasionally, sensor malfunction result in missing data, which are shown as gaps on the plot.
             </p>
           </div>
 

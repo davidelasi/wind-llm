@@ -935,7 +935,7 @@ ${llmPrompt}
 
 
         {/* Wind Forecast Chart */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-white rounded-lg shadow-lg px-2 py-6 mb-6">
           {/* ========== HEADER TEXT SECTION ========== */}
 
           {/* Title */}
@@ -997,7 +997,7 @@ ${llmPrompt}
           {/* Forecast Generation Info */}
           {llmForecastMeta && (
             <>
-              <div className="mb-3 text-sm text-gray-700">
+              <div className="mb-3 mx-2 text-sm text-gray-700">
                 <p>
                   Wind forecast generated<b>{' '}
                   {getForecastGenerationTime(llmForecastMeta.lastUpdated)}{' '}
@@ -1024,7 +1024,7 @@ ${llmPrompt}
 
               {/* Yellow Warning Box - Combined Forecast + NWS Warnings */}
               {(llmForecastMeta.warning || (forecastData?.warnings && forecastData.warnings.length > 0)) && (
-                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                <div className="mb-4 mx-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
                   <div className="flex items-start space-x-2">
                     <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                     <div className="text-sm text-yellow-800">
@@ -1056,7 +1056,7 @@ ${llmPrompt}
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
-                margin={{ top: 10, right: 20, left: 20, bottom: 20 }}
+                margin={{ top: 10, right: 5, left: 5, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -1114,7 +1114,7 @@ ${llmPrompt}
           {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
 
           {/* ========== NOTES SECTION ========== */}
-          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 leading-relaxed">
               <span className="font-medium text-blue-900">Note:</span>{' '}
               This forecast is based on past actual wind data from{' '}
@@ -1133,8 +1133,8 @@ ${llmPrompt}
         </div>
 
         {/* Area Forecast Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
-          <div className="mb-4">
+        <div className="bg-white rounded-2xl shadow-lg px-2 py-6 mt-6">
+          <div className="mb-4 mx-2">
             <h3 className="text-lg font-semibold text-gray-800">Area Forecast - Inner Waters</h3>
           </div>
 
@@ -1157,7 +1157,7 @@ ${llmPrompt}
               <p className="text-gray-600 mt-3">Loading forecast...</p>
             </div>
           ) : forecastData ? (
-            <div>
+            <div className="mx-2">
               {/* Original Forecast - Always Visible */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">

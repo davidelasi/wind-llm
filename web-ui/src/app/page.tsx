@@ -125,7 +125,6 @@ export default function Home() {
   const [lastForecastUpdate, setLastForecastUpdate] = useState<string>('');
   const [showDebug, setShowDebug] = useState(false);
   const [showForecastDebug, setShowForecastDebug] = useState(false);
-  const [showOriginalForecast, setShowOriginalForecast] = useState(false);
   const [selectedForecastDay, setSelectedForecastDay] = useState(0); // -3=3 days ago, -2=2 days ago, -1=Yesterday, 0=Today, 1=Tomorrow, 2=D2, 3=D3, 4=D4
   const [llmForecastData, setLlmForecastData] = useState<any[][] | null>(null);
   const [llmForecastLoading, setLlmForecastLoading] = useState(true);
@@ -137,13 +136,6 @@ export default function Home() {
   const [showProcessedForecast, setShowProcessedForecast] = useState(false);
   const [showRawDebugJson, setShowRawDebugJson] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
-
-  // Swipe gesture state
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  // Minimum swipe distance (in px)
-  const minSwipeDistance = 50;
 
   // Use unified wind data hook for ALL historical data (like wind-history page)
   const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
@@ -338,33 +330,6 @@ ${llmPrompt}
       alert('Failed to copy to clipboard. Debug info logged to console.');
       console.log(debugReport);
     }
-  };
-
-  // Swipe gesture handlers for day navigation
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-
-    if (isLeftSwipe && selectedForecastDay < 4) {
-      setSelectedForecastDay(selectedForecastDay + 1);
-    } else if (isRightSwipe && selectedForecastDay > -3) {
-      setSelectedForecastDay(selectedForecastDay - 1);
-    }
-
-    setTouchStart(null);
-    setTouchEnd(null);
   };
 
   useEffect(() => {
@@ -596,6 +561,47 @@ ${llmPrompt}
     });
   };
 
+  // Get friendly model name from model ID
+  const getModelName = (modelId: string): string => {
+    if (!modelId) return 'Unknown Model';
+
+    // Map common model IDs to friendly names
+    if (modelId.includes('claude-sonnet-4')) return 'Claude Sonnet 4';
+    if (modelId.includes('claude-sonnet-3')) return 'Claude Sonnet 3.5';
+    if (modelId.includes('claude-opus')) return 'Claude Opus';
+
+    return modelId; // Return raw ID if no match
+  };
+
+  // Get relative date text for when forecast was generated
+  const getForecastGenerationTime = (timestamp: string): string => {
+    const generatedDate = new Date(timestamp);
+    const now = new Date();
+
+    // Convert to PST dates (just date part, ignore time)
+    const genDatePST = toZonedTime(generatedDate, PACIFIC_TIMEZONE);
+    const nowDatePST = toZonedTime(now, PACIFIC_TIMEZONE);
+
+    const genDay = formatInTimeZone(genDatePST, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+    const todayDay = formatInTimeZone(nowDatePST, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+
+    if (genDay === todayDay) {
+      return 'today';
+    }
+
+    // Calculate yesterday
+    const yesterday = new Date(nowDatePST);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDay = formatInTimeZone(yesterday, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+
+    if (genDay === yesterdayDay) {
+      return 'yesterday';
+    }
+
+    // Otherwise return the formatted date
+    return formatInTimeZone(genDatePST, PACIFIC_TIMEZONE, 'MMM d, yyyy');
+  };
+
   // Get forecast data based on mode
   const getCurrentForecastData = () => {
     // For historical days (negative offsets), return empty time slots - no forecast to show
@@ -729,24 +735,79 @@ ${llmPrompt}
     return rgbToHex(r, g, b);
   };
 
-  // Generate Y-axis ticks dynamically based on data
-  const getYAxisTicks = (data: any[]) => {
-    if (!data || data.length === 0) return [0, 5, 10, 15, 20];
+  // Calculate maximum wind value across all days for consistent Y-axis scale
+  const getGlobalMaxWind = (): number => {
+    let globalMax = 20; // Minimum scale
 
-    // Consider both forecast and actual data
-    const values = data.flatMap(d => [
-      d.gustSpeed || 0,
-      d.actualGustSpeed || 0,
-      d.actualWindSpeed || 0
-    ]);
-    const maxValue = Math.max(...values);
-    const domainMax = Math.max(20, Math.ceil(maxValue / 5) * 5);
+    // Check LLM forecast data (days 0-4)
+    if (llmForecastData) {
+      llmForecastData.forEach(day => {
+        day.forEach(hour => {
+          if (!hour.isEmpty && hour.gustSpeed) {
+            globalMax = Math.max(globalMax, hour.gustSpeed);
+          }
+        });
+      });
+    }
 
+    // Check actual wind data (all days -3 to +4)
+    if (allWindData) {
+      allWindData.forEach(day => {
+        day.hourlyData.forEach(hour => {
+          if (hour.gustSpeed) {
+            globalMax = Math.max(globalMax, hour.gustSpeed);
+          }
+        });
+      });
+    }
+
+    // Round up to nearest 5 knots
+    return Math.ceil(globalMax / 5) * 5;
+  };
+
+  // Generate Y-axis ticks based on global max (for consistent display across all days)
+  const getYAxisTicks = () => {
+    const domainMax = getGlobalMaxWind();
     const ticks = [];
     for (let i = 0; i <= domainMax; i += 5) {
       ticks.push(i);
     }
     return ticks;
+  };
+
+  // Custom legend renderer with different icon shapes per series
+  const renderCustomLegend = (props: any) => {
+    const { payload } = props;
+    if (!payload) return null;
+
+    return (
+      <div className="flex justify-center items-center gap-4 text-xs">
+        {payload.map((entry: any, index: number) => {
+          const { dataKey, value, color } = entry;
+
+          // Determine icon based on series type
+          const isForecast = value === 'Forecast (bars)';
+          const iconColor = isForecast ? '#9ca3af' : color; // Gray for forecast, original color for actual
+
+          return (
+            <div key={`legend-${index}`} className="flex items-center gap-1">
+              {isForecast ? (
+                // Square for forecast
+                <svg width="14" height="14">
+                  <rect x="0" y="0" width="14" height="14" fill={iconColor} />
+                </svg>
+              ) : (
+                // Circle for actual wind data
+                <svg width="14" height="14">
+                  <circle cx="7" cy="7" r="6" fill={iconColor} />
+                </svg>
+              )}
+              <span style={{ color: '#374151' }}>{value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   // Custom bar component (original from Wind History)
@@ -875,21 +936,13 @@ ${llmPrompt}
 
         {/* Wind Forecast Chart */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                {selectedForecastDay >= 0 ? '5-Day Wind Forecast' : 'Historical Wind Data'}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {selectedForecastDay >= 0
-                  ? 'Wind speed and gust predictions for the next few days (11 AM - 6 PM PST)'
-                  : 'Historical wind data for selected date (11 AM - 6 PM PST)'
-                }
-                <br />
-                <span className="text-xs text-purple-600">Actual wind data displayed</span>
-              </p>
-            </div>
+          {/* ========== HEADER TEXT SECTION ========== */}
 
+          {/* Title */}
+          <div className="text-center mb-4">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+              Cabrillo Wind Forecast
+            </h1>
           </div>
 
           {/* Day Navigation - Mobile-First Arrow Design */}
@@ -941,79 +994,65 @@ ${llmPrompt}
             </button>
           </div>
 
-          {/* Forecast Metadata Display - Simplified */}
-          {selectedForecastDay >= 0 && llmForecastMeta && (
-            <div className="mb-4 space-y-1 text-xs md:text-sm">
-              {/* Generation timestamp */}
-              <div className="text-gray-700">
-                <span className="font-medium text-gray-900">Forecast generated:</span>{' '}
-                {new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZone: 'America/Los_Angeles'
-                })} PST
+          {/* Forecast Generation Info */}
+          {llmForecastMeta && (
+            <>
+              <div className="mb-3 text-sm text-gray-700">
+                <p>
+                  Wind forecast generated<b>{' '}
+                  {getForecastGenerationTime(llmForecastMeta.lastUpdated)}{' '}
+                  at{' '}
+                  {new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZone: 'America/Los_Angeles'
+                  })}{' '}
+                  PST</b>, based on the National Weather Service&apos;s Inner Waters Forecast issued on{' '}
+                  {new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    timeZone: 'America/Los_Angeles'
+                  })}{' '}
+                  PST.
+                  <span className="font-medium"> Forecast generated by AI Model:</span>{' '}
+                  {getModelName(llmForecastMeta.model)}. For more details, see: <a href="#" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">How It Works</a>
+                </p>
               </div>
 
-              {/* NWS issuance timestamp */}
-              <div className="text-gray-700">
-                <span className="font-medium text-gray-900">Based on NWS forecast:</span>{' '}
-                {new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZone: 'America/Los_Angeles'
-                })} PST
-              </div>
-
-              {/* Source indicator */}
-              <div className="text-xs text-gray-600">
-                <span className="font-medium">Source: </span>
-                <span className={`${
-                  llmForecastMeta.source === 'fresh_llm' ? 'text-green-700' :
-                  llmForecastMeta.source?.includes('cache') ? 'text-blue-700' :
-                  llmForecastMeta.source?.includes('dummy') ? 'text-orange-700' :
-                  'text-gray-700'
-                }`}>
-                  {llmForecastMeta.source === 'fresh_llm' ? '✓ Fresh LLM prediction' :
-                   llmForecastMeta.source === 'cache' ? '💾 Cached' :
-                   llmForecastMeta.source === 'cache_fallback' ? '💾 Cached (NWS unavailable)' :
-                   llmForecastMeta.source === 'cache_llm_failed' ? '💾 Cached (generation failed)' :
-                   llmForecastMeta.source === 'dummy_data_nws_failed' ? '⚠️ Sample data (NWS unavailable)' :
-                   llmForecastMeta.source === 'dummy_data_llm_failed' ? '⚠️ Sample data (LLM failed)' :
-                   `${llmForecastMeta.source || 'Unknown'}`}
-                </span>
-                {llmForecastMeta.format && (
-                  <span className="text-gray-500 ml-1">• {llmForecastMeta.format}</span>
-                )}
-              </div>
-
-              {/* Warning (if present) */}
-              {llmForecastMeta.warning && (
-                <div className="text-xs text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-200 inline-block">
-                  ⚠️ {llmForecastMeta.warning}
+              {/* Yellow Warning Box - Combined Forecast + NWS Warnings */}
+              {(llmForecastMeta.warning || (forecastData?.warnings && forecastData.warnings.length > 0)) && (
+                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+                  <div className="flex items-start space-x-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-yellow-800">
+                      {llmForecastMeta.warning && (
+                        <p className="font-medium mb-1">{llmForecastMeta.warning.replace(/^⚠️\s*/, '')}</p>
+                      )}
+                      {forecastData?.warnings && forecastData.warnings.length > 0 && (
+                        <ul className="list-disc list-inside space-y-1">
+                          {forecastData.warnings.map((warning, index) => (
+                            <li key={index}>{warning.replace(/^⚠️\s*/, '')}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
+            </>
           )}
 
-          {/* Y-Axis Label - Horizontal Above Chart */}
-          <div className="flex justify-start mb-2 ml-2">
-            <span className="text-xs md:text-sm font-medium text-gray-700">
+          {/* Chart Title */}
+          <div className="text-center mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
               Wind Speed (knots)
-            </span>
+            </h2>
           </div>
 
-          <div
-            className="h-80 w-full touch-pan-y"
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
+          <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
@@ -1022,25 +1061,22 @@ ${llmPrompt}
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
                   dataKey="time"
-                  tick={{ fontSize: 12, fill: '#374151', textAnchor: 'start' }}
+                  tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={{ stroke: '#9ca3af' }}
                   interval={0}
                 />
                 <YAxis
-                  domain={[0, (dataMax: number) => Math.max(20, Math.ceil(dataMax / 5) * 5)]}
-                  ticks={getYAxisTicks(mergedChartData)}
+                  domain={[0, getGlobalMaxWind()]}
+                  ticks={getYAxisTicks()}
                   tick={{ fontSize: 12, fill: '#374151' }}
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={{ stroke: '#9ca3af' }}
                 />
-                <Tooltip content={<CustomForecastTooltip />} />
                 <Legend
-                  wrapperStyle={{ fontSize: '12px' }}
-                  iconType="line"
+                  content={renderCustomLegend}
                 />
-                <ReferenceLine y={10} stroke="#059669" strokeDasharray="3 3" />
-                <ReferenceLine y={25} stroke="#dc2626" strokeDasharray="3 3" />
+                <ReferenceLine y={10} stroke="#9ca3af" strokeDasharray="3 3" />
 
                 {/* Forecast bars - only show for future/present days */}
                 {selectedForecastDay >= 0 && (
@@ -1077,19 +1113,29 @@ ${llmPrompt}
 
           {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
 
+          {/* ========== NOTES SECTION ========== */}
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              <span className="font-medium text-blue-900">Note:</span>{' '}
+              This forecast is based on past actual wind data from{' '}
+              <a
+                href="https://www.ndbc.noaa.gov/station_page.php?station=AGXC1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                NOAA NOS PORTS Station AGXC1
+              </a>
+              , which is located at the entrance of the port (Angel&apos;s Gate) about a mile downwind of the spot for ocean sports (wingfoiling, windsurfing, etc.). The wind at this station is usually a few knots lower than the wind at the spot. Adjust your expectations accordingly.
+            </p>
+          </div>
+
         </div>
 
         {/* Area Forecast Section */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mt-6">
-          <div className="flex justify-between items-center mb-4">
+          <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Area Forecast - Inner Waters</h3>
-            <button
-              onClick={fetchForecastData}
-              disabled={forecastLoading}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {forecastLoading ? 'Loading...' : 'Refresh Forecast'}
-            </button>
           </div>
 
           {forecastError ? (
@@ -1112,43 +1158,11 @@ ${llmPrompt}
             </div>
           ) : forecastData ? (
             <div>
-              {/* Warnings */}
-              {forecastData.warnings.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-amber-800 mb-2">⚠️ Weather Warnings</h4>
-                  <ul className="text-sm text-amber-700">
-                    {forecastData.warnings.map((warning, index) => (
-                      <li key={index} className="mb-1">• {warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Original Forecast Toggle */}
-              <div className="text-center mb-4">
-                <button
-                  onClick={() => setShowOriginalForecast(!showOriginalForecast)}
-                  className="text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  {showOriginalForecast ? 'Hide' : 'Show'} Original Forecast
-                </button>
-              </div>
-
-              {showOriginalForecast && (
-                <div className="bg-gray-100 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-gray-800 mb-3">Original Forecast</h4>
-                  <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
-                    {forecastData.original}
-                  </pre>
-                </div>
-              )}
-
-              {/* Forecast Timestamp */}
-              <div className="text-center">
-                <p className="text-xs text-gray-500">
-                  Forecast issued: {new Date(forecastData.issuedTime).toLocaleString()} •
-                  Last updated: {lastForecastUpdate}
-                </p>
+              {/* Original Forecast - Always Visible */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
+                  {forecastData.original}
+                </pre>
               </div>
             </div>
           ) : null}

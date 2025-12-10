@@ -1279,22 +1279,7 @@ ${llmPrompt}
                   </h2>
                 </div>
 
-                <div className="h-80 w-full relative">
-                  {/* Permanent tooltip-style overlay at most recent data point */}
-                  {mostRecentData && mostRecentIndex >= 0 && (
-                    <div
-                      className="absolute z-10 bg-white/95 border border-gray-200 rounded-lg p-2 text-xs shadow-lg pointer-events-none"
-                      style={{
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)'
-                      }}
-                    >
-                      <p className="font-semibold mb-1">{mostRecentData.time}</p>
-                      <p className="text-green-600">Actual Wind: {mostRecentData.windSpeed} kt</p>
-                      <p className="text-red-600">Actual Gusts: {mostRecentData.gustSpeed} kt</p>
-                    </div>
-                  )}
+                <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                       data={todaysGranularData}

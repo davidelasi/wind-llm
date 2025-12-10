@@ -765,23 +765,23 @@ ${llmPrompt}
       };
     });
 
-    // Add padding points for 9:30 AM and 6:30 PM to extend the axis display
-    const paddingStart = {
-      time: '9:30 AM',
-      windSpeed: null,
-      gustSpeed: null,
-      windDirection: null,
-      windDirectionText: null
-    };
-    const paddingEnd = {
-      time: '6:30 PM',
-      windSpeed: null,
-      gustSpeed: null,
-      windDirection: null,
-      windDirectionText: null
-    };
+    // Add padding points from 9:30-10:00 AM and 6:00-6:30 PM to extend the axis display
+    const paddingStart = [
+      { time: '9:30 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '9:36 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '9:42 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '9:48 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '9:54 AM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null }
+    ];
+    const paddingEnd = [
+      { time: '6:06 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '6:12 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '6:18 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '6:24 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null },
+      { time: '6:30 PM', windSpeed: null, gustSpeed: null, windDirection: null, windDirectionText: null }
+    ];
 
-    return [paddingStart, ...dataPoints, paddingEnd];
+    return [...paddingStart, ...dataPoints, ...paddingEnd];
   };
 
   const todaysGranularData = getTodaysGranularData();

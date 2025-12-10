@@ -1214,16 +1214,6 @@ ${llmPrompt}
                 />
                 <ReferenceLine y={10} stroke="#9ca3af" strokeDasharray="3 3" />
 
-                {/* Forecast bars - only show for future/present days */}
-                {selectedForecastDay >= 0 && (
-                  <Bar
-                    dataKey="gustSpeed"
-                    shape={<CustomForecastBar />}
-                    fill="#3b82f6"
-                    name="Forecast (bars)"
-                  />
-                )}
-
                 {/* Actual wind data lines (same style as wind history page) */}
                 <Line
                   type="monotone"
@@ -1243,8 +1233,35 @@ ${llmPrompt}
                   connectNulls={false}
                   name="Actual Gusts"
                 />
+
+                {/* Forecast bars - only show for future/present days */}
+                {selectedForecastDay >= 0 && (
+                  <Bar
+                    dataKey="gustSpeed"
+                    shape={<CustomForecastBar />}
+                    fill="#3b82f6"
+                    name="Forecast (bars)"
+                  />
+                )}
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+
+          {/* ========== NOTES SECTION ========== */}
+          <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              <span className="font-medium text-blue-900">Note:</span>{' '}
+              This forecast is based on past actual wind data from{' '}
+              <a
+                href="https://www.ndbc.noaa.gov/station_page.php?station=AGXC1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                NOAA NOS PORTS Station AGXC1
+              </a>
+              , which is located at the entrance of the port (Angel&apos;s Gate) about a mile downwind of the spot for ocean sports (wingfoiling, windsurfing, etc.). The wind at this station is usually a few knots lower than the wind at the spot. Adjust your expectations accordingly.
+            </p>
           </div>
 
           {/* ========== CURRENT CONDITIONS CHART ========== */}
@@ -1261,7 +1278,7 @@ ${llmPrompt}
             }
 
             return (
-              <div className="mt-8">
+              <div className="mt-6">
                 <div className="mb-4 mx-2">
                   <h2 className="text-xl font-semibold text-gray-800">
                     Current Conditions
@@ -1293,23 +1310,23 @@ ${llmPrompt}
                         axisLine={{ stroke: '#9ca3af' }}
                         tickLine={{ stroke: '#9ca3af' }}
                       />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                        fontSize: '12px'
-                      }}
-                      formatter={(value: any, name: string) => {
-                        if (value === null) return ['--', name];
-                        if (name === 'Average Wind') return [`${value} kt`, 'Average Wind'];
-                        if (name === 'Gust') return [`${value} kt`, 'Gust'];
-                        return [value, name];
-                      }}
-                    />
-                    <Legend
-                      wrapperStyle={{ fontSize: '12px' }}
-                    />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: any, name: string) => {
+                          if (value === null) return ['--', name];
+                          if (name === 'Actual Wind') return [`${value} kt`, 'Actual Wind'];
+                          if (name === 'Actual Gusts') return [`${value} kt`, 'Actual Gusts'];
+                          return [value, name];
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px' }}
+                      />
                       <Line
                         type="monotone"
                         dataKey="windSpeed"
@@ -1317,7 +1334,7 @@ ${llmPrompt}
                         strokeWidth={2}
                         dot={false}
                         connectNulls={false}
-                        name="Average Wind"
+                        name="Actual Wind"
                       />
                       <Line
                         type="monotone"
@@ -1326,7 +1343,7 @@ ${llmPrompt}
                         strokeWidth={2}
                         dot={false}
                         connectNulls={false}
-                        name="Gust"
+                        name="Actual Gusts"
                       />
                     </ComposedChart>
                   </ResponsiveContainer>
@@ -1335,22 +1352,11 @@ ${llmPrompt}
             );
           })()}
 
-          {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
-
-          {/* ========== NOTES SECTION ========== */}
+          {/* ========== CURRENT CONDITIONS NOTE ========== */}
           <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 leading-relaxed">
               <span className="font-medium text-blue-900">Note:</span>{' '}
-              This forecast is based on past actual wind data from{' '}
-              <a
-                href="https://www.ndbc.noaa.gov/station_page.php?station=AGXC1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 underline"
-              >
-                NOAA NOS PORTS Station AGXC1
-              </a>
-              , which is located at the entrance of the port (Angel&apos;s Gate) about a mile downwind of the spot for ocean sports (wingfoiling, windsurfing, etc.). The wind at this station is usually a few knots lower than the wind at the spot. Adjust your expectations accordingly.
+              The above diagram displays the real-time data of the AGXC1, gathered every 6 minutes. Occasionally, sensor malfunction result in missing data, which are shown as gaps on the plot.
             </p>
           </div>
 

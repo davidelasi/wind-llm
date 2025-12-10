@@ -1280,12 +1280,9 @@ ${llmPrompt}
             return (
               <div className="mt-6">
                 <div className="mb-4 mx-2">
-                  <h2 className="text-xl font-semibold text-gray-800">
+                  <h2 className="text-xl font-semibold text-gray-800 text-center">
                     Current Conditions
                   </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Today's actual wind data at 6-minute intervals (10 AM - 6 PM PST)
-                  </p>
                 </div>
 
                 <div className="h-80 w-full">
@@ -1297,6 +1294,8 @@ ${llmPrompt}
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                       <XAxis
                         dataKey="time"
+                        type="category"
+                        domain={['9:30 AM', '6:30 PM']}
                         tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                         axisLine={{ stroke: '#9ca3af' }}
                         tickLine={{ stroke: '#9ca3af' }}

@@ -1277,14 +1277,24 @@ ${llmPrompt}
                   <h2 className="text-xl font-semibold text-gray-800 text-center">
                     Current Conditions
                   </h2>
-                  {mostRecentData && (
-                    <div className="text-center mt-2 text-sm text-gray-600">
-                      Latest: {mostRecentData.time} - Wind: {mostRecentData.windSpeed} kt, Gusts: {mostRecentData.gustSpeed} kt
-                    </div>
-                  )}
                 </div>
 
-                <div className="h-80 w-full">
+                <div className="h-80 w-full relative">
+                  {/* Permanent tooltip-style overlay at most recent data point */}
+                  {mostRecentData && mostRecentIndex >= 0 && (
+                    <div
+                      className="absolute z-10 bg-white/95 border border-gray-200 rounded-lg p-2 text-xs shadow-lg pointer-events-none"
+                      style={{
+                        right: '10px',
+                        top: '50%',
+                        transform: 'translateY(-50%)'
+                      }}
+                    >
+                      <p className="font-semibold mb-1">{mostRecentData.time}</p>
+                      <p className="text-green-600">Actual Wind: {mostRecentData.windSpeed} kt</p>
+                      <p className="text-red-600">Actual Gusts: {mostRecentData.gustSpeed} kt</p>
+                    </div>
+                  )}
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                       data={todaysGranularData}
@@ -1320,6 +1330,7 @@ ${llmPrompt}
                           if (name === 'Actual Gusts') return [`${value} kt`, 'Actual Gusts'];
                           return [value, name];
                         }}
+                        cursor={{ stroke: '#9ca3af', strokeWidth: 1 }}
                       />
                       <Legend
                         wrapperStyle={{ fontSize: '12px' }}

@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wind, BarChart3, Home, Menu, X, Navigation as NavigationIcon, AlertTriangle, Bug, Eye, FlaskConical } from 'lucide-react';
+import { Wind, BarChart3, Home, Menu, X, Navigation as NavigationIcon, AlertTriangle, Bug, Eye, FlaskConical, HelpCircle, User, ListTodo, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import appConfig from '@/config/app-config.json';
 
 interface NavigationProps {
   className?: string;
@@ -146,12 +147,24 @@ export default function Navigation({ className = '' }: NavigationProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { windData, loading } = useWindData();
 
-  const navigation = [
+  const allNavigation = [
     {
       name: 'Home',
       href: '/',
       icon: Home,
       description: 'Current conditions & forecasts'
+    },
+    {
+      name: 'How It Works',
+      href: '/how-it-works',
+      icon: Info,
+      description: 'Learn about our forecasting system'
+    },
+    {
+      name: 'Statistics',
+      href: '/statistics',
+      icon: BarChart3,
+      description: 'Forecast accuracy & performance'
     },
     {
       name: 'Sausage Mode',
@@ -160,18 +173,34 @@ export default function Navigation({ className = '' }: NavigationProps) {
       description: 'See how forecasts are made'
     },
     {
-      name: 'Validation',
-      href: '/validation-test',
-      icon: FlaskConical,
-      description: '2023-07-15 test accuracy check'
+      name: 'Backlog',
+      href: '/backlog',
+      icon: ListTodo,
+      description: 'Planned features & improvements'
+    },
+    {
+      name: 'FAQ',
+      href: '/faq',
+      icon: HelpCircle,
+      description: 'Frequently asked questions'
+    },
+    {
+      name: 'About Me',
+      href: '/about',
+      icon: User,
+      description: 'About the creator'
     },
     {
       name: 'Debug',
       href: '/debug',
       icon: Bug,
-      description: 'Technical information & diagnostics'
+      description: 'Technical information & diagnostics',
+      showInNav: appConfig.debug.showInNav
     }
   ];
+
+  // Filter navigation items based on config
+  const navigation = allNavigation.filter(item => item.showInNav !== false);
 
   const isActive = (href: string) => {
     if (href === '/') {

@@ -3,5 +3,9 @@
     "displayGranularity": "hourly",
     "description": "Controls wind data display granularity on home page",
     "options": ["hourly", "6min"]
+  },
+  "debug": {
+    "showInNav": true,
+    "description": "Show debug page in navigation menu"
   }
 }

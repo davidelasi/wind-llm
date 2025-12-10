@@ -1261,12 +1261,27 @@ ${llmPrompt}
               yAxisTicks.push(i);
             }
 
+            // Find the most recent data point with non-null wind data
+            let mostRecentIndex = -1;
+            for (let i = todaysGranularData.length - 1; i >= 0; i--) {
+              if (todaysGranularData[i].windSpeed !== null && todaysGranularData[i].gustSpeed !== null) {
+                mostRecentIndex = i;
+                break;
+              }
+            }
+            const mostRecentData = mostRecentIndex >= 0 ? todaysGranularData[mostRecentIndex] : null;
+
             return (
               <div className="mt-6">
                 <div className="mb-4 mx-2">
                   <h2 className="text-xl font-semibold text-gray-800 text-center">
                     Current Conditions
                   </h2>
+                  {mostRecentData && (
+                    <div className="text-center mt-2 text-sm text-gray-600">
+                      Latest: {mostRecentData.time} - Wind: {mostRecentData.windSpeed} kt, Gusts: {mostRecentData.gustSpeed} kt
+                    </div>
+                  )}
                 </div>
 
                 <div className="h-80 w-full">
@@ -1314,7 +1329,13 @@ ${llmPrompt}
                         dataKey="windSpeed"
                         stroke="#10b981"
                         strokeWidth={2}
-                        dot={false}
+                        dot={(props: any) => {
+                          // Show dot only for the most recent data point
+                          if (props.index === mostRecentIndex) {
+                            return <circle cx={props.cx} cy={props.cy} r={5} fill="#10b981" stroke="#fff" strokeWidth={2} />;
+                          }
+                          return null;
+                        }}
                         connectNulls={false}
                         name="Actual Wind"
                       />
@@ -1323,7 +1344,13 @@ ${llmPrompt}
                         dataKey="gustSpeed"
                         stroke="#dc2626"
                         strokeWidth={2}
-                        dot={false}
+                        dot={(props: any) => {
+                          // Show dot only for the most recent data point
+                          if (props.index === mostRecentIndex) {
+                            return <circle cx={props.cx} cy={props.cy} r={5} fill="#dc2626" stroke="#fff" strokeWidth={2} />;
+                          }
+                          return null;
+                        }}
                         connectNulls={false}
                         name="Actual Gusts"
                       />

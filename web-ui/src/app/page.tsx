@@ -723,21 +723,47 @@ ${llmPrompt}
       return null;
     }
 
-    // Filter for 9 AM - 7 PM and format
-    return todayData.hourlyData
-      .filter(point => point.hour >= 9 && point.hour <= 19)
-      .map(point => {
-        const dateTime = new Date(`${point.date}T${point.time}`);
-        const minutes = dateTime.getMinutes();
-        const timeFormat = minutes === 0 ? 'h a' : 'h:mm a';
-        return {
+    // Generate ALL possible 6-minute time slots from 9:00 to 19:00 (101 points total)
+    const allTimeSlots = [];
+    for (let hour = 9; hour <= 19; hour++) {
+      const minutesInHour = hour === 19 ? [0] : [0, 6, 12, 18, 24, 30, 36, 42, 48, 54];
+      for (const minute of minutesInHour) {
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`;
+        const dateTime = new Date(`${todayKey}T${timeStr}`);
+        const timeFormat = minute === 0 ? 'h a' : 'h:mm a';
+        allTimeSlots.push({
           time: format(dateTime, timeFormat),
-          windSpeed: point.windSpeed,
-          gustSpeed: point.gustSpeed,
-          windDirection: point.windDirection,
-          windDirectionText: point.windDirectionText
-        };
-      });
+          hour,
+          minute,
+          dateTime
+        });
+      }
+    }
+
+    // Create a map of actual data for quick lookup
+    const actualDataMap = new Map(
+      todayData.hourlyData
+        .filter(point => point.hour >= 9 && point.hour <= 19)
+        .map(point => {
+          const dateTime = new Date(`${point.date}T${point.time}`);
+          const key = `${dateTime.getHours()}-${dateTime.getMinutes()}`;
+          return [key, point];
+        })
+    );
+
+    // Fill in all time slots with actual data or null
+    return allTimeSlots.map(slot => {
+      const key = `${slot.hour}-${slot.minute}`;
+      const actualPoint = actualDataMap.get(key);
+
+      return {
+        time: slot.time,
+        windSpeed: actualPoint?.windSpeed ?? null,
+        gustSpeed: actualPoint?.gustSpeed ?? null,
+        windDirection: actualPoint?.windDirection ?? null,
+        windDirectionText: actualPoint?.windDirectionText ?? null
+      };
+    });
   };
 
   const todaysGranularData = getTodaysGranularData();
@@ -1232,7 +1258,8 @@ ${llmPrompt}
                     />
                     <YAxis
                       width={35}
-                      domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]}
+                      domain={[0, (dataMax: number) => Math.ceil(dataMax / 5) * 5]}
+                      ticks={[0, 5, 10, 15, 20, 25, 30, 35, 40]}
                       tick={{ fontSize: 12, fill: '#374151' }}
                       axisLine={{ stroke: '#9ca3af' }}
                       tickLine={{ stroke: '#9ca3af' }}
@@ -1245,8 +1272,9 @@ ${llmPrompt}
                         fontSize: '12px'
                       }}
                       formatter={(value: any, name: string) => {
-                        if (name === 'windSpeed') return [`${value} kt`, 'Wind Speed'];
-                        if (name === 'gustSpeed') return [`${value} kt`, 'Gust Speed'];
+                        if (value === null) return ['--', name];
+                        if (name === 'Average Wind') return [`${value} kt`, 'Average Wind'];
+                        if (name === 'Gust') return [`${value} kt`, 'Gust'];
                         return [value, name];
                       }}
                     />
@@ -1256,10 +1284,11 @@ ${llmPrompt}
                     <Line
                       type="monotone"
                       dataKey="windSpeed"
-                      stroke="#2563eb"
+                      stroke="#10b981"
                       strokeWidth={2}
                       dot={false}
-                      name="Wind Speed"
+                      connectNulls={false}
+                      name="Average Wind"
                     />
                     <Line
                       type="monotone"
@@ -1267,7 +1296,8 @@ ${llmPrompt}
                       stroke="#dc2626"
                       strokeWidth={2}
                       dot={false}
-                      name="Gust Speed"
+                      connectNulls={false}
+                      name="Gust"
                     />
                   </ComposedChart>
                 </ResponsiveContainer>

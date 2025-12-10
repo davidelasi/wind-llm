@@ -12,6 +12,7 @@ import { findDayByDate } from '@/lib/wind-utils';
 interface UseWindDataOptions {
   autoRefresh?: boolean;
   refreshInterval?: number; // milliseconds
+  granularity?: 'hourly' | '6min'; // NEW: Controls data granularity
 }
 
 interface UseWindDataReturn {
@@ -52,6 +53,7 @@ export function useWindData(options: UseWindDataOptions = {}): UseWindDataReturn
   const {
     autoRefresh = true,
     refreshInterval = DEFAULT_REFRESH_INTERVAL,
+    granularity = 'hourly', // NEW: Default to hourly
   } = options;
 
   const [data, setData] = useState<DayData[] | null>(null);
@@ -69,7 +71,12 @@ export function useWindData(options: UseWindDataOptions = {}): UseWindDataReturn
     try {
       setError(null);
 
-      const response = await fetch('/api/wind-history');
+      // NEW: Add granularity query parameter if not hourly
+      const url = granularity === '6min'
+        ? '/api/wind-history?granularity=6min'
+        : '/api/wind-history';
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
@@ -95,7 +102,7 @@ export function useWindData(options: UseWindDataOptions = {}): UseWindDataReturn
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [granularity]);
 
   /**
    * Manual refresh function

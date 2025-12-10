@@ -1,0 +1,7 @@
+{
+  "windData": {
+    "displayGranularity": "6min",
+    "description": "Controls wind data display granularity on home page",
+    "options": ["hourly", "6min"]
+  }
+}

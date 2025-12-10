@@ -179,6 +179,53 @@ function convertToWindDataPoints(measurements: RawWindMeasurement[]): WindDataPo
 }
 
 /**
+ * Convert raw 6-minute measurements to WindDataPoint format
+ * WITHOUT hourly aggregation (preserves original cadence)
+ */
+function convertRawToDataPoints(measurements: RawWindMeasurement[]): WindDataPoint[] {
+  const dataPoints: WindDataPoint[] = [];
+
+  measurements.forEach(measurement => {
+    // Create proper UTC date from GMT components
+    const gmtDate = new Date(Date.UTC(
+      measurement.year,
+      measurement.month - 1,
+      measurement.day,
+      measurement.hour,
+      measurement.minute
+    ));
+
+    // Format to Pacific timezone
+    const pacificTimestamp = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+    const dateKey = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+    const timeStr = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, 'HH:mm');
+    const hour = parseInt(formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, 'HH'));
+
+    // Convert wind speeds from m/s to knots
+    const windSpeedKt = measurement.windSpeed! * MS_TO_KNOTS;
+    const gustSpeedKt = (measurement.gustSpeed || 0) * MS_TO_KNOTS;
+
+    dataPoints.push({
+      timestamp: pacificTimestamp,
+      date: dateKey,
+      time: timeStr,
+      hour,
+      windSpeed: Math.round(windSpeedKt * 10) / 10,
+      gustSpeed: Math.round(gustSpeedKt * 10) / 10,
+      windDirection: Math.round(measurement.windDirection!),
+      windDirectionText: getWindDirectionText(Math.round(measurement.windDirection!)),
+      temperature: Math.round((measurement.airTemp || 0) * 10) / 10,
+      pressure: Math.round((measurement.pressure || 0) * 10) / 10,
+      sampleCount: 1, // Single 6-minute sample
+      isDangerous: gustSpeedKt > DANGEROUS_GUST_THRESHOLD,
+    });
+  });
+
+  // Sort by timestamp
+  return dataPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+/**
  * Group wind data points by day
  */
 function groupByDay(dataPoints: WindDataPoint[]): DayData[] {
@@ -277,12 +324,16 @@ function calculateDaySummary(hourlyData: WindDataPoint[]): DaySummary {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Create cache key based on current hour to get fresh data each hour
+    // Extract query parameter for granularity
+    const { searchParams } = new URL(request.url);
+    const granularity = searchParams.get('granularity') || 'hourly';
+
+    // Create cache key based on current hour and granularity
     const now = new Date();
     const hourKey = formatInTimeZone(now, PACIFIC_TIMEZONE, 'yyyy-MM-dd-HH');
-    const cacheKey = `wind-history-${hourKey}`;
+    const cacheKey = `wind-history-${granularity}-${hourKey}`;
 
-    console.log('[WIND-HISTORY] Cache key:', cacheKey);
+    console.log('[WIND-HISTORY] Cache key:', cacheKey, '| Granularity:', granularity);
 
     // Try ETag cache first for HTTP conditional requests
     try {
@@ -319,9 +370,17 @@ export async function GET(request: NextRequest) {
             throw new Error('No valid wind data measurements found');
           }
 
-          // Convert to wind data points with timezone handling
-          const dataPoints = convertToWindDataPoints(measurements);
-          console.log('[WIND-HISTORY] Converted to data points:', dataPoints.length);
+          // Convert to wind data points based on granularity
+          let dataPoints: WindDataPoint[];
+          if (granularity === '6min') {
+            // NEW: Return raw 6-minute data without aggregation
+            dataPoints = convertRawToDataPoints(measurements);
+            console.log('[WIND-HISTORY] Converted to 6-minute data points:', dataPoints.length);
+          } else {
+            // EXISTING: Hourly aggregation
+            dataPoints = convertToWindDataPoints(measurements);
+            console.log('[WIND-HISTORY] Converted to hourly data points:', dataPoints.length);
+          }
 
           // Group by day
           const days = groupByDay(dataPoints);

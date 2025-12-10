@@ -22,6 +22,7 @@ import {
   Legend
 } from 'recharts';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, AlertTriangle, Copy, Check } from 'lucide-react';
+import appConfig from '@/config/app-config.json';
 
 interface WindData {
   datetime: string;
@@ -138,7 +139,12 @@ export default function Home() {
   const [copySuccess, setCopySuccess] = useState(false);
 
   // Use unified wind data hook for ALL historical data (like wind-history page)
-  const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({ autoRefresh: true, refreshInterval: 5 * 60 * 1000 });
+  const granularity = appConfig.windData.displayGranularity as 'hourly' | '6min';
+  const { data: allWindData, isLoading: allWindLoading, error: windDataError } = useWindData({
+    autoRefresh: true,
+    refreshInterval: 5 * 60 * 1000,
+    granularity: granularity
+  });
 
   const fetchWindData = async () => {
     try {
@@ -648,42 +654,80 @@ ${llmPrompt}
       return null;
     }
 
-    // Standard time slots for the chart (11 AM to 6 PM) - same as wind-history page
-    const standardTimeSlots = [11, 12, 13, 14, 15, 16, 17, 18];
+    if (granularity === '6min') {
+      // NEW: Return all 6-minute data points in forecast window (10 AM - 6 PM)
+      return dayData.hourlyData
+        .filter(point => point.hour >= 10 && point.hour <= 18)
+        .map(point => ({
+          time: format(new Date(`${point.date}T${point.time}`), 'h:mm a'),
+          actualWindSpeed: point.windSpeed,
+          actualGustSpeed: point.gustSpeed
+        }));
+    } else {
+      // EXISTING: Hourly data for standard time slots
+      const standardTimeSlots = [11, 12, 13, 14, 15, 16, 17, 18];
 
-    // Create a map of hour -> data point for quick lookup (same as wind-history)
-    const hourMap = new Map(dayData.hourlyData.map(point => [point.hour, point]));
+      // Create a map of hour -> data point for quick lookup (same as wind-history)
+      const hourMap = new Map(dayData.hourlyData.map(point => [point.hour, point]));
 
-    return standardTimeSlots.map(hour => {
-      const hourData = hourMap.get(hour);
+      return standardTimeSlots.map(hour => {
+        const hourData = hourMap.get(hour);
 
-      if (hourData) {
+        if (hourData) {
+          return {
+            time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
+            actualWindSpeed: hourData.windSpeed,
+            actualGustSpeed: hourData.gustSpeed
+          };
+        }
+
         return {
           time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
-          actualWindSpeed: hourData.windSpeed,
-          actualGustSpeed: hourData.gustSpeed
+          actualWindSpeed: null,
+          actualGustSpeed: null
         };
-      }
-
-      return {
-        time: format(new Date().setHours(hour, 0, 0, 0), 'h a'),
-        actualWindSpeed: null,
-        actualGustSpeed: null
-      };
-    });
+      });
+    }
   };
 
   const actualWindForDay = getActualWindForDay();
 
   // Merge forecast and actual data for the chart
-  const mergedChartData = currentForecastData.map((forecastPoint: any, index: number) => {
-    const actual = actualWindForDay?.[index];
-    return {
-      ...forecastPoint,
-      actualWindSpeed: actual?.actualWindSpeed || null,
-      actualGustSpeed: actual?.actualGustSpeed || null
-    };
-  });
+  const mergedChartData = (() => {
+    if (granularity === '6min' && actualWindForDay) {
+      // NEW: For 6-minute data, use actual data as base (more points)
+      // Create forecast map by converting "11 AM" -> "11:00 AM" format for matching
+      const forecastMap = new Map(
+        currentForecastData.map((fp: any) => {
+          // Convert "11 AM", "12 PM" to "11:00 AM", "12:00 PM" format
+          const timeWithMinutes = fp.time.replace(/(\d+)\s+(AM|PM)/, '$1:00 $2');
+          return [timeWithMinutes, fp];
+        })
+      );
+
+      return actualWindForDay.map(actual => {
+        // Get forecast data if this is an hourly boundary
+        const forecastData = forecastMap.get(actual.time) || {};
+
+        return {
+          time: actual.time,
+          actualWindSpeed: actual.actualWindSpeed,
+          actualGustSpeed: actual.actualGustSpeed,
+          ...forecastData
+        };
+      });
+    } else {
+      // EXISTING: Hourly mode - forecast points as base
+      return currentForecastData.map((forecastPoint: any, index: number) => {
+        const actual = actualWindForDay?.[index];
+        return {
+          ...forecastPoint,
+          actualWindSpeed: actual?.actualWindSpeed || null,
+          actualGustSpeed: actual?.actualGustSpeed || null
+        };
+      });
+    }
+  })();
 
   // Linear interpolation between two values
   const lerp = (start: number, end: number, factor: number) => {
@@ -1095,7 +1139,7 @@ ${llmPrompt}
                   dataKey="actualWindSpeed"
                   stroke="#374151"
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#374151' }}
+                  dot={granularity === '6min' ? false : { r: 4, fill: '#374151' }}
                   connectNulls={false}
                   name="Actual Wind"
                 />
@@ -1104,7 +1148,7 @@ ${llmPrompt}
                   dataKey="actualGustSpeed"
                   stroke="#6b7280"
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#6b7280' }}
+                  dot={granularity === '6min' ? false : { r: 4, fill: '#6b7280' }}
                   connectNulls={false}
                   name="Actual Gusts"
                 />

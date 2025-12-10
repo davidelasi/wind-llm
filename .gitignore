@@ -5,3 +5,6 @@ venv/
 # Cache directories
 web-ui/.cache/
 *.cache/
+
+# Claude files
+.claude/

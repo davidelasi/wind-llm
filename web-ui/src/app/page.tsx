@@ -146,6 +146,13 @@ export default function Home() {
     granularity: granularity
   });
 
+  // Separate hook for Current Conditions chart (always 6-minute data for today)
+  const { data: granularWindData, isLoading: granularLoading, error: granularError } = useWindData({
+    autoRefresh: true,
+    refreshInterval: 5 * 60 * 1000,
+    granularity: '6min'
+  });
+
   const fetchWindData = async () => {
     try {
       setLoading(true);
@@ -699,6 +706,42 @@ ${llmPrompt}
 
   const actualWindForDay = getActualWindForDay();
 
+  // Get today's 6-minute granular data for Current Conditions chart
+  const getTodaysGranularData = () => {
+    if (!granularWindData || granularWindData.length === 0) {
+      return null;
+    }
+
+    // Get today's date in Pacific timezone
+    const now = new Date();
+    const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
+    const todayKey = formatInTimeZone(nowPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+
+    // Find today's data
+    const todayData = granularWindData.find(day => day.date === todayKey);
+    if (!todayData?.hourlyData) {
+      return null;
+    }
+
+    // Filter for 9 AM - 7 PM and format
+    return todayData.hourlyData
+      .filter(point => point.hour >= 9 && point.hour <= 19)
+      .map(point => {
+        const dateTime = new Date(`${point.date}T${point.time}`);
+        const minutes = dateTime.getMinutes();
+        const timeFormat = minutes === 0 ? 'h a' : 'h:mm a';
+        return {
+          time: format(dateTime, timeFormat),
+          windSpeed: point.windSpeed,
+          gustSpeed: point.gustSpeed,
+          windDirection: point.windDirection,
+          windDirectionText: point.windDirectionText
+        };
+      });
+  };
+
+  const todaysGranularData = getTodaysGranularData();
+
   // Merge forecast and actual data for the chart
   const mergedChartData = (() => {
     if (granularity === '6min' && actualWindForDay) {
@@ -1159,6 +1202,78 @@ ${llmPrompt}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+
+          {/* ========== CURRENT CONDITIONS CHART ========== */}
+          {todaysGranularData && todaysGranularData.length > 0 && (
+            <div className="mt-8">
+              <div className="mb-4 mx-2">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Current Conditions
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Today's actual wind data at 6-minute intervals (9 AM - 7 PM PST)
+                </p>
+              </div>
+
+              <div className="h-80 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart
+                    data={todaysGranularData}
+                    margin={{ top: 10, right: 5, left: 0, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="time"
+                      tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
+                      axisLine={{ stroke: '#9ca3af' }}
+                      tickLine={{ stroke: '#9ca3af' }}
+                      interval="preserveStartEnd"
+                      ticks={['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM']}
+                    />
+                    <YAxis
+                      width={35}
+                      domain={[0, (dataMax: number) => Math.ceil(dataMax * 1.1)]}
+                      tick={{ fontSize: 12, fill: '#374151' }}
+                      axisLine={{ stroke: '#9ca3af' }}
+                      tickLine={{ stroke: '#9ca3af' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                      formatter={(value: any, name: string) => {
+                        if (name === 'windSpeed') return [`${value} kt`, 'Wind Speed'];
+                        if (name === 'gustSpeed') return [`${value} kt`, 'Gust Speed'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: '12px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="windSpeed"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Wind Speed"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="gustSpeed"
+                      stroke="#dc2626"
+                      strokeWidth={2}
+                      dot={false}
+                      name="Gust Speed"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           {/* Comparison Results Section removed - now using separate comparison page at /format-comparison */}
 

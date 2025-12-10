@@ -658,11 +658,18 @@ ${llmPrompt}
       // NEW: Return all 6-minute data points in forecast window (10 AM - 6 PM)
       return dayData.hourlyData
         .filter(point => point.hour >= 10 && point.hour <= 18)
-        .map(point => ({
-          time: format(new Date(`${point.date}T${point.time}`), 'h:mm a'),
-          actualWindSpeed: point.windSpeed,
-          actualGustSpeed: point.gustSpeed
-        }));
+        .map(point => {
+          const dateTime = new Date(`${point.date}T${point.time}`);
+          // For hourly boundaries (XX:00), use "11 AM" format to match forecast
+          // For 6-minute intervals, use "11:06 AM" format
+          const minutes = dateTime.getMinutes();
+          const timeFormat = minutes === 0 ? 'h a' : 'h:mm a';
+          return {
+            time: format(dateTime, timeFormat),
+            actualWindSpeed: point.windSpeed,
+            actualGustSpeed: point.gustSpeed
+          };
+        });
     } else {
       // EXISTING: Hourly data for standard time slots
       const standardTimeSlots = [11, 12, 13, 14, 15, 16, 17, 18];
@@ -696,17 +703,13 @@ ${llmPrompt}
   const mergedChartData = (() => {
     if (granularity === '6min' && actualWindForDay) {
       // NEW: For 6-minute data, use actual data as base (more points)
-      // Create forecast map by converting "11 AM" -> "11:00 AM" format for matching
+      // Create forecast map - times already match format ("11 AM", "12 PM", etc.)
       const forecastMap = new Map(
-        currentForecastData.map((fp: any) => {
-          // Convert "11 AM", "12 PM" to "11:00 AM", "12:00 PM" format
-          const timeWithMinutes = fp.time.replace(/(\d+)\s+(AM|PM)/, '$1:00 $2');
-          return [timeWithMinutes, fp];
-        })
+        currentForecastData.map((fp: any) => [fp.time, fp])
       );
 
       return actualWindForDay.map(actual => {
-        // Get forecast data if this is an hourly boundary
+        // Get forecast data if time matches (hourly boundaries)
         const forecastData = forecastMap.get(actual.time) || {};
 
         return {
@@ -1108,7 +1111,8 @@ ${llmPrompt}
                   tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={{ stroke: '#9ca3af' }}
-                  interval={0}
+                  interval={granularity === '6min' ? 'preserveStartEnd' : 0}
+                  ticks={granularity === '6min' ? ['10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'] : undefined}
                 />
                 <YAxis
                   width={35}

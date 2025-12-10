@@ -1056,7 +1056,7 @@ ${llmPrompt}
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
-                margin={{ top: 10, right: 5, left: 5, bottom: 20 }}
+                margin={{ top: 10, right: 5, left: 0, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -1067,6 +1067,7 @@ ${llmPrompt}
                   interval={0}
                 />
                 <YAxis
+                  width={35}
                   domain={[0, getGlobalMaxWind()]}
                   ticks={getYAxisTicks()}
                   tick={{ fontSize: 12, fill: '#374151' }}

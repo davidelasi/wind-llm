@@ -9,6 +9,7 @@ import {
   formatForecastForLLM
 } from '@/lib/forecast-utils';
 import { generateDummyForecast } from '@/lib/dummy-forecast-generator';
+import { storeForecast, type ForecastStorageData } from '@/lib/services/forecast-storage';
 
 // Load model configuration
 const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
@@ -20,6 +21,35 @@ async function loadModelConfig() {
     MODEL_CONFIG = JSON.parse(content);
   }
   return MODEL_CONFIG;
+}
+
+/**
+ * Determine current month and forecast number
+ * Used for training example selection and storage metadata
+ */
+function getCurrentForecastMetadata(): { month: string; forecastNumber: number } {
+  const currentDate = new Date();
+
+  // Get month in Pacific timezone
+  const month = currentDate.toLocaleDateString('en-US', {
+    month: 'short',
+    timeZone: 'America/Los_Angeles'
+  }).toLowerCase();
+
+  // Get hour in Pacific timezone
+  const pacificHour = parseInt(currentDate.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: 'America/Los_Angeles'
+  }).split(':')[0]);
+
+  // Determine forecast number
+  let forecastNumber = 1;
+  if (pacificHour >= 6 && pacificHour < 14) forecastNumber = 1;      // Morning
+  else if (pacificHour >= 14 && pacificHour < 20) forecastNumber = 2; // Afternoon
+  else forecastNumber = 3;                                             // Evening
+
+  return { month, forecastNumber };
 }
 
 // Types
@@ -705,6 +735,37 @@ export async function GET(request: NextRequest) {
       expiresAt: expiresAt.toISOString(),
       llmPrompt: result.prompt
     };
+
+    // Store forecast to database
+    try {
+      const { month, forecastNumber } = getCurrentForecastMetadata();
+      const modelConfig = await loadModelConfig();
+
+      const storageData: ForecastStorageData = {
+        nwsIssuedAt: nwsForecast.issuedTime,
+        llmGeneratedAt: now.toISOString(),
+        nwsForecastText: innerWatersForecast,
+        llmPrompt: result.prompt,
+        model: modelConfig.model,
+        temperature: modelConfig.temperature,
+        topP: modelConfig.top_p,
+        maxTokens: modelConfig.max_tokens.forecast,
+        month,
+        forecastNumber,
+        predictions: result.predictions,
+        source: 'fresh_llm',
+        notes: undefined
+      };
+
+      // Fire and forget - don't await to avoid blocking user response
+      storeForecast(storageData).catch(err => {
+        console.error('[LLM-FORECAST] Background storage failed:', err);
+      });
+
+    } catch (storageError) {
+      // Log but don't fail the API response
+      console.error('[LLM-FORECAST] Failed to initiate forecast storage:', storageError);
+    }
 
     console.log(`Successfully generated and cached new forecast`);
 

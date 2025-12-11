@@ -131,6 +131,7 @@ export function useWindData(options: UseWindDataOptions = {}): UseWindDataReturn
 
   // Initial fetch on mount
   useEffect(() => {
+    isMountedRef.current = true; // Reset to true on mount
     fetchWindData();
 
     return () => {

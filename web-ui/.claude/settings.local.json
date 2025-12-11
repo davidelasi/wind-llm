@@ -11,7 +11,8 @@
       "Bash(npm run lint:*)",
       "Bash(git merge:*)",
       "Bash(git push:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

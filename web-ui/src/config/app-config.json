@@ -4,8 +4,12 @@
     "description": "Controls wind data display granularity on home page",
     "options": ["hourly", "6min"]
   },
+  "navigation": {
+    "showOldWindData": true,
+    "description": "Show wind data in navigation regardless of age (for testing). Set to false in production to only show data less than 60 minutes old."
+  },
   "debug": {
     "showInNav": true,
-    "description": "Show debug page in navigation menu"
+    "description": "Show Debug & Diagnostics page in navigation menu (for testing). Set to false in production."
   }
 }

@@ -176,7 +176,7 @@ export default function ValidationTestPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-4">
-            <FlaskConical className="h-8 w-8 text-purple-600" />
+            <FlaskConical className="h-8 w-8 text-[#005F73]" />
             <h1 className="text-3xl font-bold text-gray-900">
               LLM Wind Forecast Validation Test
             </h1>
@@ -189,7 +189,7 @@ export default function ValidationTestPage() {
         {/* Methodology Documentation */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
           <div className="flex items-start space-x-3">
-            <Info className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
+            <Info className="h-6 w-6 text-[#005F73] flex-shrink-0 mt-1" />
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-blue-900 mb-3">Validation Methodology</h2>
 
@@ -216,20 +216,20 @@ export default function ValidationTestPage() {
                     <div>
                       <strong>MAE (Mean Absolute Error)</strong>
                       <p className="text-xs mt-1">MAE = (1/n) × Σ|predicted - actual|</p>
-                      <p className="text-xs text-blue-700">Average magnitude of prediction errors</p>
+                      <p className="text-xs text-gray-600">Average magnitude of prediction errors</p>
                     </div>
                     <div>
                       <strong>σ (Standard Deviation)</strong>
                       <p className="text-xs mt-1">σ = √[(1/n) × Σ(xᵢ - μ)²]</p>
-                      <p className="text-xs text-blue-700">Measure of prediction variability across runs</p>
+                      <p className="text-xs text-gray-600">Measure of prediction variability across runs</p>
                     </div>
                     <div>
                       <strong>WSPD</strong>
-                      <p className="text-xs text-blue-700">Average wind speed in knots (sustained wind)</p>
+                      <p className="text-xs text-gray-600">Average wind speed in knots (sustained wind)</p>
                     </div>
                     <div>
                       <strong>GST</strong>
-                      <p className="text-xs text-blue-700">Maximum gust speed in knots (peak wind)</p>
+                      <p className="text-xs text-gray-600">Maximum gust speed in knots (peak wind)</p>
                     </div>
                   </div>
                 </div>
@@ -254,7 +254,7 @@ export default function ValidationTestPage() {
         {pythonLoading && (
           <div className="flex items-center justify-center py-12">
             <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#005F73]"></div>
               <span className="text-gray-600">Loading test results...</span>
             </div>
           </div>

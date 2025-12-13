@@ -101,10 +101,10 @@ export function convertToHourlyWindData(measurements: RawWindMeasurement[]): Win
     ));
 
     // Get Pacific time and set to beginning of hour
-    const pacificTimestamp = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, "yyyy-MM-dd'T'HH':00:00XXX'");
+    const pacificTimestamp = formatInTimeZone(gmtDate, PACIFIC_TIMEZONE, "yyyy-MM-dd'T'HH:00:00XXX");
 
     dataPoints.push({
-      timestamp: pacificTimestamp.replace("XXX'", "XXX"),
+      timestamp: pacificTimestamp,
       date: dateKey,
       time: `${hourStr}:00`,
       hour,

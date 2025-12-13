@@ -456,65 +456,6 @@ ${llmPrompt}
   const windCategory = getWindSpeedCategory(windData.windSpeed);
   const windDir = getWindDirectionText(windData.windDirection);
 
-  // Placeholder forecast data for each day (5 days total)
-  const allForecastData = [
-    // Today (D0)
-    [
-      { time: '11 AM', windSpeed: 12, gustSpeed: 16, windDirection: 220, windDirectionText: 'SW', isEmpty: false },
-      { time: '12 PM', windSpeed: 14, gustSpeed: 18, windDirection: 225, windDirectionText: 'SW', isEmpty: false },
-      { time: '1 PM', windSpeed: 16, gustSpeed: 21, windDirection: 230, windDirectionText: 'SW', isEmpty: false },
-      { time: '2 PM', windSpeed: 15, gustSpeed: 19, windDirection: 235, windDirectionText: 'SW', isEmpty: false },
-      { time: '3 PM', windSpeed: 13, gustSpeed: 17, windDirection: 240, windDirectionText: 'WSW', isEmpty: false },
-      { time: '4 PM', windSpeed: 11, gustSpeed: 15, windDirection: 245, windDirectionText: 'WSW', isEmpty: false },
-      { time: '5 PM', windSpeed: 9, gustSpeed: 13, windDirection: 250, windDirectionText: 'WSW', isEmpty: false },
-      { time: '6 PM', windSpeed: 8, gustSpeed: 11, windDirection: 255, windDirectionText: 'WSW', isEmpty: false },
-    ],
-    // Tomorrow (D1)
-    [
-      { time: '11 AM', windSpeed: 10, gustSpeed: 14, windDirection: 200, windDirectionText: 'SSW', isEmpty: false },
-      { time: '12 PM', windSpeed: 12, gustSpeed: 16, windDirection: 205, windDirectionText: 'SSW', isEmpty: false },
-      { time: '1 PM', windSpeed: 14, gustSpeed: 18, windDirection: 210, windDirectionText: 'SSW', isEmpty: false },
-      { time: '2 PM', windSpeed: 17, gustSpeed: 22, windDirection: 215, windDirectionText: 'SW', isEmpty: false },
-      { time: '3 PM', windSpeed: 18, gustSpeed: 24, windDirection: 220, windDirectionText: 'SW', isEmpty: false },
-      { time: '4 PM', windSpeed: 16, gustSpeed: 20, windDirection: 225, windDirectionText: 'SW', isEmpty: false },
-      { time: '5 PM', windSpeed: 14, gustSpeed: 18, windDirection: 230, windDirectionText: 'SW', isEmpty: false },
-      { time: '6 PM', windSpeed: 12, gustSpeed: 16, windDirection: 235, windDirectionText: 'SW', isEmpty: false },
-    ],
-    // Day 2 (D2)
-    [
-      { time: '11 AM', windSpeed: 8, gustSpeed: 12, windDirection: 270, windDirectionText: 'W', isEmpty: false },
-      { time: '12 PM', windSpeed: 10, gustSpeed: 14, windDirection: 275, windDirectionText: 'W', isEmpty: false },
-      { time: '1 PM', windSpeed: 12, gustSpeed: 16, windDirection: 280, windDirectionText: 'W', isEmpty: false },
-      { time: '2 PM', windSpeed: 13, gustSpeed: 17, windDirection: 285, windDirectionText: 'WNW', isEmpty: false },
-      { time: '3 PM', windSpeed: 11, gustSpeed: 15, windDirection: 290, windDirectionText: 'WNW', isEmpty: false },
-      { time: '4 PM', windSpeed: 9, gustSpeed: 13, windDirection: 295, windDirectionText: 'WNW', isEmpty: false },
-      { time: '5 PM', windSpeed: 7, gustSpeed: 11, windDirection: 300, windDirectionText: 'WNW', isEmpty: false },
-      { time: '6 PM', windSpeed: 6, gustSpeed: 9, windDirection: 305, windDirectionText: 'NW', isEmpty: false },
-    ],
-    // Day 3 (D3)
-    [
-      { time: '11 AM', windSpeed: 5, gustSpeed: 8, windDirection: 180, windDirectionText: 'S', isEmpty: false },
-      { time: '12 PM', windSpeed: 7, gustSpeed: 10, windDirection: 185, windDirectionText: 'S', isEmpty: false },
-      { time: '1 PM', windSpeed: 9, gustSpeed: 12, windDirection: 190, windDirectionText: 'S', isEmpty: false },
-      { time: '2 PM', windSpeed: 11, gustSpeed: 15, windDirection: 195, windDirectionText: 'SSW', isEmpty: false },
-      { time: '3 PM', windSpeed: 10, gustSpeed: 14, windDirection: 200, windDirectionText: 'SSW', isEmpty: false },
-      { time: '4 PM', windSpeed: 8, gustSpeed: 12, windDirection: 205, windDirectionText: 'SSW', isEmpty: false },
-      { time: '5 PM', windSpeed: 6, gustSpeed: 10, windDirection: 210, windDirectionText: 'SSW', isEmpty: false },
-      { time: '6 PM', windSpeed: 5, gustSpeed: 8, windDirection: 215, windDirectionText: 'SW', isEmpty: false },
-    ],
-    // Day 4 (D4)
-    [
-      { time: '11 AM', windSpeed: 15, gustSpeed: 20, windDirection: 240, windDirectionText: 'WSW', isEmpty: false },
-      { time: '12 PM', windSpeed: 18, gustSpeed: 24, windDirection: 245, windDirectionText: 'WSW', isEmpty: false },
-      { time: '1 PM', windSpeed: 22, gustSpeed: 28, windDirection: 250, windDirectionText: 'WSW', isEmpty: false },
-      { time: '2 PM', windSpeed: 25, gustSpeed: 32, windDirection: 255, windDirectionText: 'WSW', isEmpty: false },
-      { time: '3 PM', windSpeed: 23, gustSpeed: 30, windDirection: 260, windDirectionText: 'W', isEmpty: false },
-      { time: '4 PM', windSpeed: 20, gustSpeed: 26, windDirection: 265, windDirectionText: 'W', isEmpty: false },
-      { time: '5 PM', windSpeed: 17, gustSpeed: 22, windDirection: 270, windDirectionText: 'W', isEmpty: false },
-      { time: '6 PM', windSpeed: 15, gustSpeed: 20, windDirection: 275, windDirectionText: 'W', isEmpty: false },
-    ],
-  ];
-
   // Get day labels (supports negative offsets for past days)
   const getDayLabels = () => {
     const today = new Date();
@@ -636,8 +577,31 @@ ${llmPrompt}
       return llmForecastData[selectedForecastDay];
     }
 
-    // Fallback to placeholder data if LLM forecast not loaded
-    return allForecastData[selectedForecastDay] || allForecastData[0];
+    // If still loading, return empty data (don't show placeholder bars)
+    if (llmForecastLoading) {
+      return [
+        { time: '11 AM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '12 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '1 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '2 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '3 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '4 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '5 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+        { time: '6 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      ];
+    }
+
+    // If there's an error or no data available after loading, also return empty data
+    return [
+      { time: '11 AM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '12 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '1 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '2 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '3 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '4 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '5 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+      { time: '6 PM', windSpeed: 0, gustSpeed: 0, windDirection: 0, windDirectionText: '', isEmpty: true },
+    ];
   };
 
   const currentForecastData = getCurrentForecastData();

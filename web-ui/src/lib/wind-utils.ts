@@ -39,13 +39,6 @@ export function getWindSpeedTextColor(speedKnots: number): string {
 }
 
 /**
- * Check if wind conditions are dangerous (for safety warnings)
- */
-export function isDangerousWindCondition(gustKnots: number): boolean {
-  return gustKnots > 25;
-}
-
-/**
  * Filter hourly wind data by time window
  * @param hourlyData - Array of wind data points
  * @param startHour - Start hour (0-23), inclusive
@@ -197,7 +190,7 @@ function calculateHourScore(point: WindDataPoint): number {
     score -= 20;
   }
 
-  // Penalize dangerous gusts
+  // Penalize very high gusts
   if (point.gustSpeed > 25) {
     score -= 30;
   } else if (point.gustSpeed > 22) {

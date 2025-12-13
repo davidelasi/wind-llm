@@ -29,7 +29,6 @@ export interface WindDataPoint {
 
   // Metadata
   sampleCount: number;       // Number of source measurements in this hour
-  isDangerous: boolean;      // Flag for dangerous conditions (gust > 25kt)
 }
 
 /**
@@ -44,7 +43,6 @@ export interface DaySummary {
   primaryDirectionText: string;
   avgTemperature: number;
   avgPressure: number;
-  dangerousHours: number;    // Count of hours with dangerous conditions
   dataPoints: number;        // Total hourly measurements
 }
 

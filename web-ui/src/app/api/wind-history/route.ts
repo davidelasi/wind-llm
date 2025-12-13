@@ -162,7 +162,6 @@ function convertToWindDataPoints(measurements: RawWindMeasurement[]): WindDataPo
       temperature: Math.round(avgTemp * 10) / 10,
       pressure: Math.round(avgPressure * 10) / 10,
       sampleCount: hourMeasurements.length,
-      isDangerous: gustSpeedKt > DANGEROUS_GUST_THRESHOLD,
     });
   });
 
@@ -209,7 +208,6 @@ function convertRawToDataPoints(measurements: RawWindMeasurement[]): WindDataPoi
       temperature: Math.round((measurement.airTemp || 0) * 10) / 10,
       pressure: Math.round((measurement.pressure || 0) * 10) / 10,
       sampleCount: 1, // Single 6-minute sample
-      isDangerous: gustSpeedKt > DANGEROUS_GUST_THRESHOLD,
     });
   });
 
@@ -268,7 +266,6 @@ function calculateDaySummary(hourlyData: WindDataPoint[]): DaySummary {
       primaryDirectionText: 'N',
       avgTemperature: 0,
       avgPressure: 0,
-      dangerousHours: 0,
       dataPoints: 0,
     };
   }
@@ -286,7 +283,6 @@ function calculateDaySummary(hourlyData: WindDataPoint[]): DaySummary {
   const avgDirection = directions.reduce((a, b) => a + b, 0) / directions.length;
   const avgTemperature = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;
   const avgPressure = pressures.length > 0 ? pressures.reduce((a, b) => a + b, 0) / pressures.length : 0;
-  const dangerousHours = hourlyData.filter(h => h.isDangerous).length;
 
   // Calculate primary direction
   const directionCounts: { [key: string]: number } = {};
@@ -306,7 +302,6 @@ function calculateDaySummary(hourlyData: WindDataPoint[]): DaySummary {
     primaryDirectionText,
     avgTemperature: Math.round(avgTemperature * 10) / 10,
     avgPressure: Math.round(avgPressure * 10) / 10,
-    dangerousHours,
     dataPoints: hourlyData.length,
   };
 }

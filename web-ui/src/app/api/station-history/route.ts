@@ -25,14 +25,12 @@ interface ProcessedHistoryData {
     windDirection: number;
     windDirectionText: string;
     temperature: number;
-    isDangerous: boolean;
   }>;
   summary: {
     avgWindSpeed: number;
     maxWindSpeed: number;
     avgGustSpeed: number;
     maxGustSpeed: number;
-    dangerousGustCount: number;
     primaryDirection: string;
     dataPoints: number;
     dateRange: {
@@ -43,7 +41,6 @@ interface ProcessedHistoryData {
 }
 
 const MS_TO_KNOTS = 1.94384;
-const DANGEROUS_GUST_THRESHOLD = 25;
 
 function getWindDirectionText(degrees: number): string {
   const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
@@ -173,7 +170,6 @@ function processHistoryData(rawData: WindDataPoint[]): ProcessedHistoryData {
   const chartData = aggregatedData.map(point => ({
     ...point,
     windDirectionText: getWindDirectionText(point.windDirection),
-    isDangerous: point.gustSpeed > DANGEROUS_GUST_THRESHOLD,
   }));
 
   const windSpeeds = chartData.map(d => d.windSpeed);
@@ -194,7 +190,6 @@ function processHistoryData(rawData: WindDataPoint[]): ProcessedHistoryData {
     maxWindSpeed: Math.max(...windSpeeds),
     avgGustSpeed: gustSpeeds.reduce((a, b) => a + b, 0) / gustSpeeds.length,
     maxGustSpeed: Math.max(...gustSpeeds),
-    dangerousGustCount: chartData.filter(d => d.isDangerous).length,
     primaryDirection,
     dataPoints: chartData.length,
     dateRange: {

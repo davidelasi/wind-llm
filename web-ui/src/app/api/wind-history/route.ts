@@ -12,23 +12,15 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { format } from 'date-fns';
 import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
 import { fileCache, createEtagCache } from '../../../../lib/cache/file-cache';
+import { convertToHourlyWindData, getWindDirectionText } from '@/lib/services/wind-aggregation';
 import type { WindHistoryResponse, DayData, WindDataPoint, DaySummary, RawWindMeasurement } from '@/types/wind-data';
 
 // Constants
 const MS_TO_KNOTS = 1.94384;
-const DANGEROUS_GUST_THRESHOLD = 25; // knots
 const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
 const STATION_ID = 'AGXC1';
 const LOCATION = 'Los Angeles, CA';
 
-/**
- * Converts wind direction in degrees to compass direction text
- */
-function getWindDirectionText(degrees: number): string {
-  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-  const index = Math.round(degrees / 22.5) % 16;
-  return directions[index];
-}
 
 /**
  * Parse raw NOAA text data into structured measurements
@@ -377,8 +369,8 @@ export async function GET(request: NextRequest) {
             dataPoints = convertRawToDataPoints(measurements);
             console.log('[WIND-HISTORY] Converted to 6-minute data points:', dataPoints.length);
           } else {
-            // EXISTING: Hourly aggregation
-            dataPoints = convertToWindDataPoints(measurements);
+            // EXISTING: Hourly aggregation using shared service
+            dataPoints = convertToHourlyWindData(measurements);
             console.log('[WIND-HISTORY] Converted to hourly data points:', dataPoints.length);
           }
 

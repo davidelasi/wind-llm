@@ -14,8 +14,8 @@ export default function FAQ() {
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">What is Wind-LA?</h2>
               <p className="text-gray-600">
-                Wind-LA is an LLM-based wind forecasting system specifically designed for ocean sports enthusiasts
-                in the Los Angeles area. It uses machine learning to predict wind speeds and gusts based on National
+                Wind-LA is an AI-based wind forecasting system specifically designed for ocean sports enthusiasts
+                in the Los Angeles area. It uses Large Language Models (LLMs) to predict wind speeds and gusts based on National
                 Weather Service forecasts.
               </p>
             </div>
@@ -23,18 +23,19 @@ export default function FAQ() {
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">How accurate are the predictions?</h2>
               <p className="text-gray-600">
-                Our system has been validated against historical data with an average error of 1.54 ± 0.19 knots
-                for wind speed (WSPD) and 2.02 ± 0.16 knots for gust speed (GST). These results are based on
-                testing with temperature 1.0 variance testing.
+                Unlike most other wind app, we publish the accuracy of our forecast. Consult the page Statistics for detail. 
+                Note however that our forecast and real-time wind data are relative to a sensor located about a mile 
+                downwind of the spot. The wind there is typically about 3 knots lower than the wind at the spot. So,
+                our forecast generally underestimate the conditions at the spot. Adjust your expectations accordingly.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">What location does this cover?</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Do you have plans to cover other spots besides Cabrillo?</h2>
               <p className="text-gray-600">
-                The forecasts are specific to the AGXC1 buoy station near Los Angeles, which provides real-time
-                wind measurements and is ideal for sailors, windsurfers, and other ocean sports participants in
-                the LA area.
+                I would love to cover Belmont Shore. However, I could not find a public set of historic wind data from a sensor 
+                sufficiently close to the kitesurfing and wingfoiling spot at Belmont. If such a data set would be available,
+                I would definitely like to include Belmont, which is my favorite kitefoiling spot! 
               </p>
             </div>
 
@@ -64,65 +65,47 @@ export default function FAQ() {
                 by month and forecast issuance time.
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Backlog Section */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Planned Features & Improvements</h1>
-
-          <div className="space-y-6">
+            {/* Backlog Section */}
             <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">Short-Term Roadmap</h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>Add wind direction predictions (currently only speed and gusts)</li>
-                <li>Extend forecast horizon from 3 days to 5 days</li>
-                <li>Mobile-optimized interface improvements</li>
-                <li>Historical forecast accuracy tracking dashboard</li>
-                <li>Email/SMS notifications for favorable wind conditions</li>
-              </ul>
+              <h1 className="text-3xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h1>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">What's the next major milestone for this project?</h2>
+              <p className="text-gray-600">
+                I would like to improve the quality of the predictions by passing to the model not only the NWS inner water 
+                forecast but also the NWS weather forecast for the Los Angeles area. I have already collected all the data but
+                need to go through the pain of data cleanup, refactoring, etc., then reworking the application logic to add
+                this additional data to the LLM prompt. This will also make running this forecast more expensive, as the number
+                of tokens passed to the LLM model will go up. However, this should allow to make better predictions. For example,
+                we know heat bubbles (which may be mentioned in the weather forecast for the Los Angeles area) may interfere with
+                the development of afternoon's thermal ocean winds. So, by adding the area weather forecast to the marine forecast
+                we hope to improve the quality of our predictions (I believe goes in the direction of better satisfying Ashby's 
+                law of requisite variety for the problem at hand). Stay tuned for developments in the coming months!
+              </p>
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Can this system learn from its own mistakes?</h2>
+              <p className="text-gray-600">
+                I believe so! Soon, I would like to implement a sort of reinforcement learning by adding to the learning data
+                set new examples when the model largely misses a daily prediction. Say, today's forecast was exceptionally wrong
+                vs the actual wind for the day, I want to identify such days when the model was very wrong automatically and add 
+                them to the training set. Perhaps today's forecast was an unutual type of forecast, which rarely occurred in 
+                the training data or was not included in the curated set of examples. A mechanism for automatically updating the 
+                training examples should ensure that the same "miss" is not repeated in the future. 
+              </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">Medium-Term Goals</h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>Integration of Area Forecast data alongside Coastal Waters forecasts</li>
-                <li>Seasonal/climate indicator integration (El Niño/La Niña patterns)</li>
-                <li>Multiple location support (additional buoy stations)</li>
-                <li>User-customizable alert thresholds</li>
-                <li>Advanced statistics and trend analysis</li>
-              </ul>
+              <h2 className="text-xl font-semibold text-gray-800 mb-2">Are there data of other nature that can be used to improve 
+                the predictions?
+              </h2>
+              <p className="text-gray-600">
+                Yes! For example, I am planning to consider integrating freely available satellite data of the cloud coverage of
+                the Los Angeles coast for a multi-modal prediction. We know that there are periods of the year when the development
+                of wind at the spot hinges upon the disappearance of the marine layer early on in the day. And this is something that
+                we can train a model to recognize by passing both text and images to the model. I am planning to work on this feature
+                after releasing the other two features mentioned above.
+              </p>
             </div>
 
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">Research & Experimentation</h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>Model fine-tuning vs. few-shot learning comparison</li>
-                <li>Temperature parameter optimization for variance control</li>
-                <li>TOON v2.0 format evaluation for token efficiency</li>
-                <li>Ensemble forecasting with multiple model runs</li>
-                <li>Integration with other weather data sources</li>
-              </ul>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">Community Features</h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-600">
-                <li>User-submitted actual condition reports</li>
-                <li>Spot popularity and crowding indicators</li>
-                <li>Equipment recommendations based on forecast</li>
-                <li>Community discussion and feedback platform</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Target Production Launch:</strong> January 1, 2026
-            </p>
-            <p className="text-sm text-blue-700 mt-2">
-              Have suggestions or feature requests? Feel free to reach out through the About page!
-            </p>
           </div>
         </div>
       </div>

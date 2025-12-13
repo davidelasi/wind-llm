@@ -160,3 +160,114 @@ export async function getRecentForecasts(limit: number = 10) {
     return [];
   }
 }
+
+/**
+ * Get most recent forecast from database with full data
+ * Returns complete forecast data for serving to users
+ */
+export async function getMostRecentForecast(): Promise<{
+  id: string;
+  nwsIssuedAt: string;
+  llmGeneratedAt: string;
+  nwsForecastText: string;
+  predictions: ForecastPrediction[][];
+  llmPrompt: string;
+  model: string;
+  temperature: number;
+  source: string;
+} | null> {
+  try {
+    const result = await sql`
+      SELECT
+        id,
+        nws_issued_at,
+        llm_generated_at,
+        nws_forecast_text,
+        predictions,
+        llm_prompt,
+        model,
+        temperature,
+        source
+      FROM forecasts
+      WHERE source = 'fresh_llm'
+      ORDER BY nws_issued_at DESC
+      LIMIT 1
+    `;
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0];
+
+    // Transform JSONB predictions back to array format
+    const predictionsJson = row.predictions;
+    const predictions: ForecastPrediction[][] = [
+      predictionsJson.day_0 || [],
+      predictionsJson.day_1 || [],
+      predictionsJson.day_2 || [],
+      predictionsJson.day_3 || [],
+      predictionsJson.day_4 || []
+    ];
+
+    return {
+      id: row.id,
+      nwsIssuedAt: row.nws_issued_at,
+      llmGeneratedAt: row.llm_generated_at,
+      nwsForecastText: row.nws_forecast_text,
+      predictions,
+      llmPrompt: row.llm_prompt,
+      model: row.model,
+      temperature: parseFloat(row.temperature),
+      source: row.source
+    };
+
+  } catch (error) {
+    console.error('[FORECAST-STORAGE] Failed to get most recent forecast:', error);
+    return null;
+  }
+}
+
+/**
+ * Get count of LLM calls made today (PST timezone)
+ * Used for rate limiting
+ */
+export async function getDailyLLMCallCount(): Promise<number> {
+  try {
+    const result = await sql`
+      SELECT COUNT(*) as call_count
+      FROM forecasts
+      WHERE source = 'fresh_llm'
+        AND DATE(stored_at AT TIME ZONE 'America/Los_Angeles') =
+            DATE(NOW() AT TIME ZONE 'America/Los_Angeles')
+    `;
+
+    return parseInt(result.rows[0].call_count) || 0;
+
+  } catch (error) {
+    console.error('[FORECAST-STORAGE] Failed to get daily LLM call count:', error);
+    // Return high number on error to prevent runaway costs
+    return 999;
+  }
+}
+
+/**
+ * Check if forecast for specific NWS issuance time already exists
+ * Returns true if forecast exists, false otherwise
+ */
+export async function forecastExistsForNWS(nwsIssuedAt: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      SELECT id FROM forecasts
+      WHERE nws_issued_at = ${nwsIssuedAt}
+        AND source = 'fresh_llm'
+      LIMIT 1
+    `;
+
+    return result.rows.length > 0;
+
+  } catch (error) {
+    console.error('[FORECAST-STORAGE] Failed to check forecast existence:', error);
+    return false;
+  }
+}

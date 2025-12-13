@@ -9,7 +9,12 @@ import {
   formatForecastForLLM
 } from '@/lib/forecast-utils';
 import { generateDummyForecast } from '@/lib/dummy-forecast-generator';
-import { storeForecast, type ForecastStorageData } from '@/lib/services/forecast-storage';
+import {
+  storeForecast,
+  getMostRecentForecast,
+  getDailyLLMCallCount,
+  type ForecastStorageData
+} from '@/lib/services/forecast-storage';
 
 // Load model configuration
 const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
@@ -62,15 +67,6 @@ interface ForecastPrediction {
   isEmpty: boolean;
 }
 
-interface CachedForecast {
-  predictions: ForecastPrediction[][];
-  nwsForecastText: string;
-  nwsForecastTime: string;
-  generatedAt: string;
-  expiresAt: string;
-  llmPrompt: string;
-}
-
 interface TrainingExample {
   forecast: {
     day_0_day: string;
@@ -98,9 +94,6 @@ interface TrainingExample {
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
-
-// Cache for storing the latest forecast
-let forecastCache: CachedForecast | null = null;
 
 // NWS API configuration
 const NWS_COASTAL_FORECAST_URL = 'https://api.weather.gov/products/types/CWF/locations/LOX';
@@ -546,40 +539,28 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if we have cached forecast that's still valid
-    if (!forceUpdate && forecastCache && new Date() < new Date(forecastCache.expiresAt)) {
-      console.log(`Returning cached forecast`);
-      return NextResponse.json({
-        success: true,
-        data: {
-          predictions: forecastCache.predictions,
-          isLLMGenerated: true,
-          lastUpdated: forecastCache.generatedAt,
-          nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache',
-          llmPrompt: forecastCache.llmPrompt
-        }
-      });
-    }
-
-    // Fetch latest NWS forecast
+    // Fetch latest NWS forecast first
     console.log('[LLM-FORECAST] Starting forecast generation process...');
     console.log('[LLM-FORECAST] Fetching latest NWS forecast...');
     const nwsForecast = await fetchLatestNWSForecast();
 
     if (!nwsForecast) {
       logError('NWS forecast fetch failed', 'No forecast data returned');
-      // If we have cached data, return it with a warning
-      if (forecastCache) {
+
+      // Try to return most recent forecast from database
+      const dbForecast = await getMostRecentForecast();
+      if (dbForecast) {
+        console.log('[LLM-FORECAST] Returning database forecast (NWS unavailable)');
         return NextResponse.json({
           success: true,
           data: {
-            predictions: forecastCache.predictions,
+            predictions: dbForecast.predictions,
             isLLMGenerated: true,
-            lastUpdated: forecastCache.generatedAt,
-            nwsForecastTime: forecastCache.nwsForecastTime,
-            source: 'cache_fallback',
-            warning: 'Unable to fetch latest NWS forecast, using cached data'
+            lastUpdated: dbForecast.llmGeneratedAt,
+            nwsForecastTime: dbForecast.nwsIssuedAt,
+            source: 'db_nws_failed',
+            warning: 'Unable to fetch latest NWS forecast, using stored forecast',
+            llmPrompt: dbForecast.llmPrompt
           }
         });
       }
@@ -618,12 +599,59 @@ export async function GET(request: NextRequest) {
       }, { status: 503 });
     }
 
+    // Check database for most recent forecast
+    const dbForecast = await getMostRecentForecast();
+
+    // Compare NWS issuance time with database forecast
+    if (!forceUpdate && dbForecast) {
+      const nwsTime = new Date(nwsForecast.issuedTime);
+      const dbTime = new Date(dbForecast.nwsIssuedAt);
+
+      if (dbTime >= nwsTime) {
+        console.log('[LLM-FORECAST] Database forecast is current (NWS unchanged)');
+        console.log(`[LLM-FORECAST] DB forecast time: ${dbForecast.nwsIssuedAt}, NWS time: ${nwsForecast.issuedTime}`);
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            predictions: dbForecast.predictions,
+            isLLMGenerated: true,
+            lastUpdated: dbForecast.llmGeneratedAt,
+            nwsForecastTime: dbForecast.nwsIssuedAt,
+            source: 'db_current',
+            llmPrompt: dbForecast.llmPrompt
+          }
+        });
+      }
+
+      console.log('[LLM-FORECAST] NWS forecast is newer than database, will generate new forecast');
+      console.log(`[LLM-FORECAST] DB forecast time: ${dbForecast.nwsIssuedAt}, NWS time: ${nwsForecast.issuedTime}`);
+    }
+
     // Extract inner waters forecast
     console.log('[LLM-FORECAST] Extracting inner waters forecast from NWS data...');
     const innerWatersForecast = extractInnerWatersForecast(nwsForecast.text);
 
     if (!innerWatersForecast) {
       logError('Inner waters forecast extraction failed', { forecastLength: nwsForecast.text?.length });
+
+      // Try to return database forecast if available
+      if (dbForecast) {
+        console.log('[LLM-FORECAST] Returning database forecast (extraction failed)');
+        return NextResponse.json({
+          success: true,
+          data: {
+            predictions: dbForecast.predictions,
+            isLLMGenerated: true,
+            lastUpdated: dbForecast.llmGeneratedAt,
+            nwsForecastTime: dbForecast.nwsIssuedAt,
+            source: 'db_extraction_failed',
+            warning: 'Unable to extract inner waters forecast, using stored forecast',
+            llmPrompt: dbForecast.llmPrompt
+          }
+        });
+      }
+
       await sendErrorEmail('Failed to extract inner waters forecast', {
         forecastText: nwsForecast.text,
         timestamp: new Date().toISOString()
@@ -634,23 +662,53 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Check if this is a newer forecast than what we have cached
-    if (forecastCache &&
-        forecastCache.nwsForecastTime === nwsForecast.issuedTime &&
-        !forceUpdate) {
-      console.log(`NWS forecast unchanged, returning cached prediction`);
-      return NextResponse.json({
-        success: true,
-        data: {
-          predictions: forecastCache.predictions,
-          isLLMGenerated: true,
-          lastUpdated: forecastCache.generatedAt,
-          nwsForecastTime: forecastCache.nwsForecastTime,
-          source: 'cache_same_forecast',
-          llmPrompt: forecastCache.llmPrompt
-        }
+    // === Rate Limiting Check ===
+    const modelConfig = await loadModelConfig();
+    const maxDailyCalls = modelConfig.maxDailyLlmCalls || 6;
+    const todayCallCount = await getDailyLLMCallCount();
+
+    console.log(`[RATE-LIMIT] Daily LLM calls: ${todayCallCount}/${maxDailyCalls}`);
+
+    if (todayCallCount >= maxDailyCalls && !forceUpdate) {
+      console.warn('[RATE-LIMIT] Daily LLM call limit exceeded');
+
+      // Return most recent database forecast
+      if (dbForecast) {
+        console.log('[RATE-LIMIT] Returning database forecast (limit exceeded)');
+        return NextResponse.json({
+          success: true,
+          data: {
+            predictions: dbForecast.predictions,
+            isLLMGenerated: true,
+            lastUpdated: dbForecast.llmGeneratedAt,
+            nwsForecastTime: dbForecast.nwsIssuedAt,
+            source: 'db_rate_limited',
+            warning: `Daily LLM call limit reached (${maxDailyCalls} calls). Using stored forecast.`,
+            llmPrompt: dbForecast.llmPrompt
+          }
+        });
+      }
+
+      // No database forecast available and rate limited
+      await sendErrorEmail('Rate limit exceeded with no cached data', {
+        todayCallCount,
+        maxDailyCalls,
+        timestamp: new Date().toISOString()
       });
+
+      return NextResponse.json({
+        success: false,
+        error: `Daily LLM call limit exceeded (${maxDailyCalls} calls). No cached forecast available.`,
+        rateLimitInfo: {
+          callsToday: todayCallCount,
+          limit: maxDailyCalls,
+          resetsAt: 'Midnight PST'
+        }
+      }, { status: 429 });  // 429 Too Many Requests
     }
+
+    console.log('[RATE-LIMIT] Within daily limit, proceeding with LLM generation');
+    // === END Rate Limiting Check ===
 
     // Generate new forecast with LLM
     console.log(`[LLM-FORECAST] Generating 5-day forecast with LLM using JSON training examples`);
@@ -659,8 +717,9 @@ export async function GET(request: NextRequest) {
 
     if (!result) {
       logError('LLM prediction generation failed', { forecastText: innerWatersForecast?.substring(0, 200) + '...' });
-      // If we have cached data, return it with a warning
-      if (forecastCache) {
+
+      // Try to return database forecast
+      if (dbForecast) {
         await sendErrorEmail('LLM forecast generation failed', {
           forecastText: innerWatersForecast,
           timestamp: new Date().toISOString()
@@ -669,13 +728,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
-            predictions: forecastCache.predictions,
+            predictions: dbForecast.predictions,
             isLLMGenerated: true,
-            lastUpdated: forecastCache.generatedAt,
-            nwsForecastTime: forecastCache.nwsForecastTime,
-            source: 'cache_llm_failed',
-            warning: 'LLM forecast generation failed, using cached data',
-            llmPrompt: forecastCache.llmPrompt
+            lastUpdated: dbForecast.llmGeneratedAt,
+            nwsForecastTime: dbForecast.nwsIssuedAt,
+            source: 'db_llm_failed',
+            warning: 'LLM forecast generation failed, using stored forecast',
+            llmPrompt: dbForecast.llmPrompt
           }
         });
       }
@@ -723,20 +782,8 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Cache the new forecast (expires in 3 hours)
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from now
-
-    forecastCache = {
-      predictions: result.predictions,
-      nwsForecastText: innerWatersForecast,
-      nwsForecastTime: nwsForecast.issuedTime,
-      generatedAt: now.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      llmPrompt: result.prompt
-    };
-
     // Store forecast to database
+    const now = new Date();
     try {
       const { month, forecastNumber } = getCurrentForecastMetadata();
       const modelConfig = await loadModelConfig();

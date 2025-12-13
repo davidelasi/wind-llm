@@ -134,6 +134,7 @@ export default function Home() {
   const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
   const [showLlmPrompt, setShowLlmPrompt] = useState(false);
   const [showDebugSection, setShowDebugSection] = useState(false);
+  const [showAreaForecast, setShowAreaForecast] = useState(false);
   const [showProcessedForecast, setShowProcessedForecast] = useState(false);
   const [showRawDebugJson, setShowRawDebugJson] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -1342,42 +1343,6 @@ ${llmPrompt}
 
         </div>
 
-        {/* Area Forecast Section */}
-        <div className="bg-white rounded-2xl shadow-lg px-2 py-6 mt-6">
-          <div className="mb-4 mx-2">
-            <h3 className="text-lg font-semibold text-gray-800">Area Forecast - Inner Waters</h3>
-          </div>
-
-          {forecastError ? (
-            <div className="p-6 text-center">
-              <div className="text-gray-500 mb-4">Unable to load area forecast</div>
-              <button
-                onClick={fetchForecastData}
-                className="text-sm bg-[#005F73] text-white px-4 py-2 rounded hover:bg-[#0A9396] transition-colors"
-              >
-                Retry
-              </button>
-              <div className="mt-2 text-xs text-gray-500">
-                See debug section below for details
-              </div>
-            </div>
-          ) : forecastLoading && !forecastData ? (
-            <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-              <p className="text-gray-600 mt-3">Loading forecast...</p>
-            </div>
-          ) : forecastData ? (
-            <div className="mx-2">
-              {/* Original Forecast - Always Visible */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">
-                  {forecastData.original}
-                </pre>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
         {/* ========================================
             CONSOLIDATED DEBUG SECTION
             ======================================== */}
@@ -1616,7 +1581,54 @@ ${llmPrompt}
                 </div>
               </div>
 
-              {/* 4. Processed Forecast - Collapsible */}
+              {/* 4. Area Forecast - Inner Waters */}
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <div
+                  className="flex items-center justify-between cursor-pointer"
+                  onClick={() => setShowAreaForecast(!showAreaForecast)}
+                >
+                  <h4 className="text-sm font-semibold text-gray-900 flex items-center">
+                    <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">4</span>
+                    Area Forecast - Inner Waters
+                  </h4>
+                  {showAreaForecast ? (
+                    <ChevronUp className="w-4 h-4 text-gray-600" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-600" />
+                  )}
+                </div>
+                {showAreaForecast && (
+                  <div className="mt-3 space-y-3">
+                    {forecastError ? (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                        Unable to load area forecast.{' '}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchForecastData();
+                          }}
+                          className="underline font-semibold"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : forecastLoading && !forecastData ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent"></div>
+                        <span>Loading forecast...</span>
+                      </div>
+                    ) : forecastData ? (
+                      <div className="p-3 bg-gray-900 text-purple-300 rounded font-mono text-xs whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto">
+                        {forecastData.original}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">No forecast available.</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Processed Forecast - Collapsible */}
               {forecastData?.processed && (
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                   <div
@@ -1624,7 +1636,7 @@ ${llmPrompt}
                     onClick={() => setShowProcessedForecast(!showProcessedForecast)}
                   >
                     <h4 className="text-sm font-semibold text-gray-900 flex items-center">
-                      <span className="w-6 h-6 bg-yellow-100 text-yellow-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">4</span>
+                      <span className="w-6 h-6 bg-yellow-100 text-yellow-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">5</span>
                       Processed Forecast (LLM Input)
                     </h4>
                     {showProcessedForecast ? (
@@ -1641,7 +1653,7 @@ ${llmPrompt}
                 </div>
               )}
 
-              {/* 5. LLM Prompt - Collapsible */}
+              {/* 6. LLM Prompt - Collapsible */}
               {llmPrompt && (
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                   <div
@@ -1649,7 +1661,7 @@ ${llmPrompt}
                     onClick={() => setShowLlmPrompt(!showLlmPrompt)}
                   >
                     <h4 className="text-sm font-semibold text-gray-900 flex items-center">
-                      <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">5</span>
+                      <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold mr-2">6</span>
                       LLM Prompt
                     </h4>
                     {showLlmPrompt ? (

@@ -119,6 +119,25 @@ export function getCurrentPacificDate(): Date;
 Tone configurable via parameter (Grok / technical / friendly / surfer_dude)
 ```
 
+---
+
+## 🐞 RECURRING BUG TO DIAGNOSE (DO NOT PATCH YET)
+
+### 5. Forecast period misclassification (weekday → D# mapping)
+
+**Symptom:** Forecast periods like `.SAT` remain unmapped and later periods get shifted (e.g., `.SAT` stays literal, subsequent periods become `D1` instead of `D2`). Example from 2025-12-12 9:19 PM PST bulletin in `Inner waters...` block: `.SAT...` should map to `D1` but stayed `.SAT`; following lines were mapped as `D1`/`D1_NIGHT` instead of `D2`.
+
+**Likely cause:** `convertPeriodsToRelative` uses `new Date()` (server clock) as the base when called from `llm-forecast`/`area-forecast`. When the API runs the next day (or after UTC rolls over), the base day is wrong, so weekday names (SAT/SUN/...) no longer align with issuance time and get skipped. The mapping loop only covers weekdays derived from the (incorrect) base date and first-match-wins, so late/old bulletins mis-map.
+
+**Risks:** Regressing correct mappings for same-day forecasts; double-replacing already-converted tokens (`D0_DAY` → `D0_DAY_DAY` if run twice) if we’re not careful.
+
+**Proposed direction:** Anchor relative-day mapping to the NWS issuance timestamp, not `new Date()`. Prefer the `issuanceTime` from the `@graph` metadata; if missing, parse the bulletin header line (`919 PM PST Fri Dec 12 2025`). Pass that `Date` into `convertPeriodsToRelative`. Add a guard that logs/flags any period tokens left unmapped (e.g., `/\.[A-Z]{3}(?: NIGHT)?\.\.\./`) so we catch future cases. Keep the replacement idempotent (skip already `D#_*` tokens).
+
+**Test plan (before changing code):**
+- Unit-test `convertPeriodsToRelative` with a fixed issuance time of Fri Dec 12 2025 21:19 PST and the provided sample text; assert outputs match the expected `D0/D1/D2...` labels.
+- Cover edge cases: forecast requested after midnight PST, after UTC rollover, and with already-converted tokens present.
+- Validate no regressions for same-day forecasts (Today/Tonight) and for 5-day horizon limits.
+
 **Current Reality:**
 - LLM returns only structured JSON predictions
 - No human-readable summary generation

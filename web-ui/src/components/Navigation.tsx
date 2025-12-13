@@ -132,6 +132,12 @@ export default function Navigation({ className = '' }: NavigationProps) {
       description: 'Current conditions & forecasts'
     },
     {
+      name: 'Sat & Cam',
+      href: '/sat-cam',
+      icon: Eye,
+      description: 'Latest satellite + harbor webcam'
+    },
+    {
       name: 'How It Works',
       href: '/how-it-works',
       icon: Info,

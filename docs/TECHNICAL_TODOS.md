@@ -138,6 +138,18 @@ Tone configurable via parameter (Grok / technical / friendly / surfer_dude)
 - Cover edge cases: forecast requested after midnight PST, after UTC rollover, and with already-converted tokens present.
 - Validate no regressions for same-day forecasts (Today/Tonight) and for 5-day horizon limits.
 
+### LLM prompt missing day_3/day_4 actuals (DO NOT PATCH YET)
+
+**Symptom:** Few-shot prompt includes forecast periods for Day 0–4, but “ACTUAL WIND CONDITIONS” only lists day_0, day_1, day_2. Day 3/4 actuals exist in training JSON (e.g., `data/training/few_shot_examples_json/*`) but are omitted from the prompt, so Day 3/4 predictions are guided only by forecast text.
+
+**Source:** In `web-ui/src/app/api/llm-forecast/route.ts`, `createFewShotPrompt` hardcodes `['day_0','day_1','day_2']` when emitting actuals.
+
+**Risk:** Reduced quality for Day 3/4 forecasts (model guesses beyond Day 2).
+
+**Proposed direction:** Extend the actuals loop to include day_3 and day_4 when present (guarded to avoid missing-key crashes). If token budget is a concern, consider summarizing day_3/4 (e.g., condensed hourly list or stats) or reducing example count to stay within limits.
+
+**Test plan:** Unit-test `createFewShotPrompt` with a mock example containing day_3/day_4 actuals; assert the prompt includes those blocks. Check prompt length against Anthropic token budget. Verify existing day_0–2 content is unchanged.
+
 **Current Reality:**
 - LLM returns only structured JSON predictions
 - No human-readable summary generation

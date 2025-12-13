@@ -251,8 +251,8 @@ Here are ${examples.length} examples showing how NWS multi-day forecasts transla
 
     examplesText += `\nACTUAL WIND CONDITIONS:\n`;
 
-    // Include multi-day actual data (day_0, day_1, day_2)
-    ['day_0', 'day_1', 'day_2'].forEach(dayKey => {
+    // Include multi-day actual data (day_0 through day_4 when available)
+    ['day_0', 'day_1', 'day_2', 'day_3', 'day_4'].forEach(dayKey => {
       const dayData = (example.actual as any)[dayKey];
       if (dayData && dayData.hourly && Array.isArray(dayData.hourly)) {
         const date = dayData.date || 'Unknown';

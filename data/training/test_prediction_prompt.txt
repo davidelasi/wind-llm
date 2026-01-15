@@ -1,0 +1,152 @@
+You are a wind forecasting expert. Given NWS coastal water forecasts, predict hourly wind speeds (WSPD) and gusts (GST) in knots for the 11 AM - 6 PM time window.
+
+Here are examples of how to interpret forecasts and make predictions:
+
+=== EXAMPLE 1 ===
+FORECAST:
+day_0_day: NE winds 10 to 15 kt. Wind waves 2 ft or less. W swell 2 to 3 ft at 9 seconds.
+day_0_night: W winds 5 to 10 kt, becoming N 10 to 15 kt after midnight. Wind waves 2 ft or less. W swell 3 ft at 15 seconds.
+day_1_day: NE winds 10 to 15 kt. Wind waves 2 ft or less. W swell 3 ft at 14 seconds.
+day_1_night: NW winds 5 to 10 kt, becoming NE 10 to 15 kt after midnight. Wind waves 2 ft or less. W swell 3 ft at 14 seconds.
+day_2_day: From Point Mugu to Santa Monica, NE winds 20 to 30 kt. Elsewhere, NE winds 10 to 15 kt. Combined seas 3 to 5 ft dominant period 14 seconds.
+day_2_night: N winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 ft at 14 seconds.
+day_3_day: NW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 ft.
+day_4_day: W winds 10 to 15 kt. Wind waves 2 ft or less. W swell 2 to 4 ft.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2022-01-26):
+  10:00-11:00: WSPD 1.4kt, GST 2.8kt
+  11:00-12:00: WSPD 4.0kt, GST 6.1kt
+  12:00-13:00: WSPD 7.0kt, GST 10.1kt
+  13:00-14:00: WSPD 7.5kt, GST 11.2kt
+  14:00-15:00: WSPD 5.4kt, GST 8.4kt
+  15:00-16:00: WSPD 7.8kt, GST 11.2kt
+  16:00-17:00: WSPD 6.6kt, GST 9.9kt
+  17:00-18:00: WSPD 6.0kt, GST 8.5kt
+
+day_1 (2022-01-27):
+  10:00-11:00: WSPD 3.9kt, GST 7.4kt
+  11:00-12:00: WSPD 6.3kt, GST 9.1kt
+  12:00-13:00: WSPD 8.4kt, GST 12.0kt
+  13:00-14:00: WSPD 7.5kt, GST 10.8kt
+  14:00-15:00: WSPD 8.1kt, GST 11.4kt
+  15:00-16:00: WSPD 7.2kt, GST 12.0kt
+  16:00-17:00: WSPD 6.4kt, GST 8.2kt
+  17:00-18:00: WSPD 5.7kt, GST 7.4kt
+
+day_2 (2022-01-28):
+  10:00-11:00: WSPD 6.0kt, GST 9.7kt
+  11:00-12:00: WSPD 4.9kt, GST 9.7kt
+  12:00-13:00: WSPD 2.9kt, GST 6.1kt
+  13:00-14:00: WSPD 3.3kt, GST 5.3kt
+  14:00-15:00: WSPD 4.6kt, GST 6.5kt
+  15:00-16:00: WSPD 2.8kt, GST 6.8kt
+  16:00-17:00: WSPD 5.9kt, GST 8.2kt
+  17:00-18:00: WSPD 5.3kt, GST 10.3kt
+
+
+=== EXAMPLE 2 ===
+FORECAST:
+day_0_day: NE winds 10 to 15 kt. Wind waves 2 ft or less. W swell 3 ft at 14 seconds.
+day_0_night: From Point Mugu to Santa Monica, N winds 10 to 20 kt becoming NE 20 to 30 kt after midnight. Elsewhere, NW winds 5 to 10 kt becoming NE 10 to 15 kt after midnight. Combined seas 3 to 5 ft dominant period 14 seconds.
+day_1_day: From Point Mugu to Santa Monica and S of Palos Verdes, NE winds 20 to 30 kt becoming 15 to 25 kt in the afternoon. Elsewhere, NE winds 10 to 15 kt. Combined seas 3 to 5 ft dominant period 14 seconds.
+day_1_night: NE winds 15 to 20 kt, becoming 10 to 15 kt after midnight. Wind waves 2 to 3 ft. W swell 2 to 3 ft at 13 seconds. SE swell 2 ft in the evening.
+day_2_day: NE winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 ft at 14 seconds and S 2 ft at 9 seconds.
+day_2_night: NW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 ft at 14 seconds. S swell 2 ft in the evening.
+day_3_day: NW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 to 3 ft.
+day_4_day: NW winds 10 to 15 kt. Wind waves 2 ft or less. W swell 3 to 5 ft.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2022-01-27):
+  10:00-11:00: WSPD 3.9kt, GST 7.4kt
+  11:00-12:00: WSPD 6.3kt, GST 9.1kt
+  12:00-13:00: WSPD 8.4kt, GST 12.0kt
+  13:00-14:00: WSPD 7.5kt, GST 10.8kt
+  14:00-15:00: WSPD 8.1kt, GST 11.4kt
+  15:00-16:00: WSPD 7.2kt, GST 12.0kt
+  16:00-17:00: WSPD 6.4kt, GST 8.2kt
+  17:00-18:00: WSPD 5.7kt, GST 7.4kt
+
+day_1 (2022-01-28):
+  10:00-11:00: WSPD 6.0kt, GST 9.7kt
+  11:00-12:00: WSPD 4.9kt, GST 9.7kt
+  12:00-13:00: WSPD 2.9kt, GST 6.1kt
+  13:00-14:00: WSPD 3.3kt, GST 5.3kt
+  14:00-15:00: WSPD 4.6kt, GST 6.5kt
+  15:00-16:00: WSPD 2.8kt, GST 6.8kt
+  16:00-17:00: WSPD 5.9kt, GST 8.2kt
+  17:00-18:00: WSPD 5.3kt, GST 10.3kt
+
+day_2 (2022-01-29):
+  10:00-11:00: WSPD 5.3kt, GST 8.2kt
+  11:00-12:00: WSPD 5.9kt, GST 8.0kt
+  12:00-13:00: WSPD 5.1kt, GST 8.9kt
+  13:00-14:00: WSPD 2.5kt, GST 7.6kt
+  14:00-15:00: WSPD 2.9kt, GST 7.0kt
+  15:00-16:00: WSPD 7.3kt, GST 11.4kt
+  16:00-17:00: WSPD 6.5kt, GST 13.9kt
+  17:00-18:00: WSPD 7.1kt, GST 13.1kt
+
+
+=== EXAMPLE 3 ===
+FORECAST:
+day_0_day: N to NE wind 5 to 10 kt, becoming W 10 to 15 kt this afternoon. Seas 2 to 3 ft. Waves: W 3 ft at 10 seconds. Patchy fog this morning.
+day_0_night: W wind 10 to 15 kt in the evening, becoming light. Seas 2 to 3 ft. Waves: W 2 ft at 7 seconds. Patchy fog after midnight.
+day_1_day: Light winds, becoming W 10 kt in the afternoon. Seas 2 to 4 ft. Waves: W 3 ft at 7 seconds and SW 2 ft at 15 seconds. Patchy fog.
+day_1_night: W wind 10 kt in the evening, becoming light. Seas 2 to 3 ft. Waves: W 2 ft at 6 seconds and S 2 ft at 15 seconds. Patchy fog after midnight.
+day_2_day: Light winds, becoming W 10 kt in the afternoon. Seas 2 to 3 ft. Waves: W 2 ft at 8 seconds and S 2 ft at 16 seconds. Patchy fog in the morning.
+day_2_night: W wind 10 kt, becoming light after midnight. Seas 2 to 3 ft. Waves: W 2 ft at 11 seconds and S 2 ft at 17 seconds.
+day_3_day: Light winds, becoming W 10 kt in the afternoon. Seas 2 to 3 ft. Waves: W 3 ft at 9 seconds and S 2 ft at 15 seconds.
+day_3_night: W wind 10 kt in the evening, becoming N 5 to 10 kt, except NE 10 to 15 kt from Point Mugu to Santa Monica late. Seas 2 to 3 ft. Waves: W 3 ft at 9 seconds and S 2 ft at 15 seconds.
+day_4_day: From Point Mugu to Santa Monica, NE wind 10 to 15 kt in the morning, becoming W 5 to 10 kt. Elsewhere, NE wind 5 to 10 kt in the morning, becoming W 10 kt. Seas 2 to 3 ft. Waves: W 3 ft at 12 seconds.
+day_4_night: W wind 10 kt in the evening, becoming N to NE 5 to 10 kt. Seas 2 to 3 ft. Waves: W 3 ft at 14 seconds.
+
+ACTUAL WIND CONDITIONS:
+day_0 (2024-12-03):
+  10:00-11:00: WSPD 2.4kt, GST 3.6kt
+  11:00-12:00: WSPD 1.8kt, GST 2.8kt
+  12:00-13:00: WSPD 2.8kt, GST 4.2kt
+  13:00-14:00: WSPD 3.9kt, GST 6.1kt
+  14:00-15:00: WSPD 7.1kt, GST 10.3kt
+  15:00-16:00: WSPD 8.4kt, GST 11.8kt
+  16:00-17:00: WSPD 7.6kt, GST 11.2kt
+  17:00-18:00: WSPD 5.1kt, GST 8.9kt
+
+day_1 (2024-12-04):
+  10:00-11:00: WSPD 2.1kt, GST 5.3kt
+  11:00-12:00: WSPD 3.1kt, GST 4.9kt
+  12:00-13:00: WSPD 3.6kt, GST 4.9kt
+  13:00-14:00: WSPD 6.9kt, GST 10.6kt
+  14:00-15:00: WSPD 9.5kt, GST 13.1kt
+  15:00-16:00: WSPD 9.6kt, GST 13.7kt
+  16:00-17:00: WSPD 8.2kt, GST 12.2kt
+  17:00-18:00: WSPD 5.2kt, GST 9.1kt
+
+day_2 (2024-12-05):
+  10:00-11:00: WSPD 1.5kt, GST 5.3kt
+  11:00-12:00: WSPD 3.8kt, GST 7.0kt
+  12:00-13:00: WSPD 3.7kt, GST 6.3kt
+  13:00-14:00: WSPD 3.4kt, GST 6.1kt
+  14:00-15:00: WSPD 7.4kt, GST 9.9kt
+  15:00-16:00: WSPD 8.2kt, GST 10.8kt
+  16:00-17:00: WSPD 7.3kt, GST 11.0kt
+  17:00-18:00: WSPD 5.5kt, GST 8.4kt
+
+
+=== NEW FORECAST TO PREDICT ===
+FORECAST:
+day_0_day: NW wind 5 to 10 kt, becoming W 10 to 15 kt in the afternoon. Seas 3 to 5 ft. Waves: W 4 ft at 8 seconds.
+day_0_night: W wind 10 to 15 kt, becoming N 5 to 10 kt after midnight. Seas 3 to 5 ft. Waves: W 4 ft at 8 seconds.
+day_1_day: N to NW wind 5 to 10 kt early, becoming W 10 to 15 kt in the afternoon. Seas 3 to 5 ft. Waves: W 4 ft at 9 seconds.
+day_1_night: W wind 10 to 15 kt, becoming NW 5 to 10 kt after midnight. Seas 3 to 5 ft. Waves: W 4 ft at 9 seconds.
+day_2_day: NW wind 5 to 10 kt, becoming W 10 kt in the afternoon. Seas 3 to 4 ft. Waves: W 3 ft at 10 seconds.
+day_2_night: W wind 10 kt, becoming variable 5 kt or less after midnight. Seas 3 to 4 ft. Waves: W 3 ft at 10 seconds.
+
+Based on the patterns from the examples above, predict the hourly wind conditions for day_0 (11 AM - 6 PM) in this format:
+day_0 (2025-01-15):
+  11:00-12:00: WSPD X.Xkt, GST Y.Ykt
+  12:00-13:00: WSPD X.Xkt, GST Y.Ykt
+  ...
+  17:00-18:00: WSPD X.Xkt, GST Y.Ykt
+
+Provide only the prediction in the specified format, analyzing the forecast text for wind speed ranges and timing patterns.

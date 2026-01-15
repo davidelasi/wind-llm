@@ -1,0 +1,16 @@
+# Virtual environment
+venv/
+.env.local
+
+# Cache directories
+web-ui/.cache/
+*.cache/
+
+# Claude files
+.claude/
+
+# macOS system files
+.DS_Store
+**/.DS_Store
+.vercel
+.env*.local

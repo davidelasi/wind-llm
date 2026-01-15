@@ -1,0 +1,29 @@
+{
+  "model": "claude-sonnet-4-20250514",
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "max_tokens": {
+    "forecast": 2500,
+    "validation": 2000
+  },
+  "maxDailyLlmCalls": 6,
+  "enableRateLimit": true,
+  "allowOnDemandGeneration": true,
+  "allowLocalLlmCalls": false,
+  "useDummyForecastWhenUnavailable": false,
+  "convertForecastDaysToRelative": false,
+  "includeGeographicContext": true,
+  "description": "LLM model configuration for wind forecasting",
+  "notes": {
+    "temperature": "Range 0.0-1.0. Higher = more random/creative, Lower = more deterministic. Default: 1.0",
+    "top_p": "Nucleus sampling. Range 0.0-1.0. Lower = more constrained vocabulary. Default: 1.0 (no constraint)",
+    "model": "Claude Sonnet 4 model identifier",
+    "maxDailyLlmCalls": "Maximum LLM API calls per day (PST timezone). Includes both manual and cron-triggered calls. Set to -1 to disable limit. Default: 6 (3 cron + 3 manual)",
+    "enableRateLimit": "Master switch for rate limiting. If false, maxDailyLlmCalls is ignored. Default: true for cost protection.",
+    "allowOnDemandGeneration": "Allow user page loads to trigger new forecast generation. If false, only cron jobs can generate forecasts (production mode). If true, page loads can generate forecasts when NWS has new data (development/debug mode). Default: true for flexibility, set to false in production for cron-only mode.",
+    "allowLocalLlmCalls": "Allow LLM calls in local development when true. If false, set ALLOW_LLM_CALLS=true to opt in.",
+    "useDummyForecastWhenUnavailable": "If true, return realistic dummy forecast data when LLM forecast fails and no cache available. DEFAULT: false for production safety. Use for development/testing only.",
+    "convertForecastDaysToRelative": "If true, use script to convert weekday names (MON, TUE) to relative days (day_0, day_1). If false, keep original weekday format and tell LLM the mapping via prompt instruction. DEFAULT: false (LLM instruction approach is more robust).",
+    "includeGeographicContext": "If true, include geographic context from prompt_config.json to help LLM interpret sub-area mentions (e.g., 'Malibu to Santa Monica' vs 'San Pedro Channel'). DEFAULT: true. Can be disabled for A/B testing."
+  }
+}

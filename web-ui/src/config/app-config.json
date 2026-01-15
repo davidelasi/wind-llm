@@ -1,0 +1,19 @@
+{
+  "windData": {
+    "displayGranularity": "hourly",
+    "description": "Controls wind data display granularity on home page",
+    "options": ["hourly", "6min"]
+  },
+  "navigation": {
+    "showOldWindData": true,
+    "description": "Show wind data in navigation regardless of age (for testing). Set to false in production to only show data less than 60 minutes old."
+  },
+  "debug": {
+    "showDebugSection": true,
+    "description": "Controls debug and technical information visibility. showDebugSection: Show Debug & Technical Information section on home page. Set to false in production to hide debug features."
+  },
+  "llmForecast": {
+    "enabled": true,
+    "description": "Enable LLM forecast fetching. Set to false in local development when allowLocalLlmCalls is disabled and no database is configured."
+  }
+}

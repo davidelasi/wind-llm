@@ -1,0 +1,6 @@
+{
+  "geographicContext": "=== GEOGRAPHIC CONTEXT ===\nThe forecast target is AGXC1 station, located between Point Fermin and Los Angeles Light in San Pedro Harbor (southeastern portion of zone PZZ655, San Pedro Channel sub-area).\n\nWhen interpreting sub-area mentions in the forecast:\n1. \"San Pedro Channel\" → MOST relevant (direct match)\n2. \"Malibu to Santa Monica\" → Northwest of target, less relevant\n3. \"Otherwise\" or no sub-area specified → General zone conditions, use as default\n=== END GEOGRAPHIC CONTEXT ===\n\n",
+  "notes": {
+    "geographicContext": "Helps LLM interpret sub-area mentions in NWS forecasts. Can be edited for fine-tuning without code changes."
+  }
+}

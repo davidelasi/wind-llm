@@ -1,0 +1,736 @@
+[
+  {
+    "issued": "2024-12-26T03:04:00-08:00",
+    "issuance_time": "03:04",
+    "number": 1,
+    "complete": true,
+    "warnings": "SMALL CRAFT ADVISORY IN EFFECT THROUGH LATE TONIGHT",
+    "forecast": {
+      "day_0_day": "W to NW wind 10 to 20 kt with gusts to 25 kt, becoming 15 to 25 kt this afternoon. Seas 5 to 7 ft. Waves: W 7 ft at 13 seconds.",
+      "day_0_night": "W to NW wind 15 to 25 kt, becoming 10 to 15 kt after midnight. Seas 4 to 6 ft. Waves: W 6 ft at 9 seconds. Patchy fog after midnight.",
+      "day_1_day": "NW wind 10 to 15 kt, becoming W 15 to 20 kt in the afternoon. Seas 5 to 7 ft. Waves: W 6 ft at 13 seconds.",
+      "day_1_night": "W wind 15 to 20 kt, becoming N 5 to 10 kt after midnight. Seas 5 to 7 ft. Waves: W 6 ft at 13 seconds. Patchy fog after midnight.",
+      "day_2_day": "Light winds. Seas 5 to 7 ft. Waves: W 6 ft at 15 seconds. Patchy fog in the morning.",
+      "day_2_night": "Light winds. Seas 5 to 7 ft. Waves: W 5 ft at 17 seconds. Patchy fog after midnight.",
+      "day_3_day": "W wind 5 to 10 kt, becoming 10 to 15 kt in the afternoon. Seas 4 to 6 ft. Waves: W 5 ft at 17 seconds. Patchy fog in the morning.",
+      "day_3_night": "W to NW wind 10 to 15 kt. Seas 5 to 7 ft. Waves: W 6 ft at 9 seconds.",
+      "day_4_day": "W to NW wind 10 to 15 kt. Seas 4 to 6 ft. Waves: W 5 ft at 8 seconds.",
+      "day_4_night": "W to NW wind 10 kt. Seas 4 to 6 ft. Waves: W 5 ft at 11 seconds."
+    },
+    "actual": {
+      "day_0": {
+        "date": "2024-12-26",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 7.9,
+            "gst_max_kt": 11.2
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 7.1,
+            "gst_max_kt": 10.1
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 7.2,
+            "gst_max_kt": 9.9
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 6.4,
+            "gst_max_kt": 8.5
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 6.1,
+            "gst_max_kt": 8.0
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 5.9,
+            "gst_max_kt": 9.5
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 1.5,
+            "gst_max_kt": 2.5
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 1.7,
+            "gst_max_kt": 3.0
+          }
+        ]
+      },
+      "day_1": {
+        "date": "2024-12-27",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 7.5,
+            "gst_max_kt": 10.8
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 9.8,
+            "gst_max_kt": 12.5
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 9.2,
+            "gst_max_kt": 11.4
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 7.9,
+            "gst_max_kt": 10.6
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 6.1,
+            "gst_max_kt": 8.0
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 4.8,
+            "gst_max_kt": 6.8
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 3.7,
+            "gst_max_kt": 6.1
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 4.8,
+            "gst_max_kt": 7.8
+          }
+        ]
+      },
+      "day_2": {
+        "date": "2024-12-28",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 3.9,
+            "gst_max_kt": 8.0
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 3.9,
+            "gst_max_kt": 6.3
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 4.7,
+            "gst_max_kt": 6.5
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 7.4,
+            "gst_max_kt": 10.3
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 7.7,
+            "gst_max_kt": 10.3
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 8.1,
+            "gst_max_kt": 9.9
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 6.4,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 5.5,
+            "gst_max_kt": 8.2
+          }
+        ]
+      },
+      "day_3": {
+        "date": "2024-12-29",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 4.0,
+            "gst_max_kt": 6.8
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 2.0,
+            "gst_max_kt": 8.0
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 5.7,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 3.5,
+            "gst_max_kt": 8.4
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 4.3,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 8.3,
+            "gst_max_kt": 10.8
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 5.8,
+            "gst_max_kt": 10.1
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 3.7,
+            "gst_max_kt": 6.5
+          }
+        ]
+      },
+      "day_4": {
+        "date": "2024-12-30",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 2.3,
+            "gst_max_kt": 3.2
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 4.1,
+            "gst_max_kt": 5.3
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 5.7,
+            "gst_max_kt": 8.2
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 5.5,
+            "gst_max_kt": 9.1
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 7.3,
+            "gst_max_kt": 11.6
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 9.3,
+            "gst_max_kt": 13.1
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 9.3,
+            "gst_max_kt": 12.7
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 5.6,
+            "gst_max_kt": 8.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "issued": "2023-12-17T02:54:00-08:00",
+    "issuance_time": "02:54",
+    "number": 1,
+    "complete": true,
+    "warnings": null,
+    "forecast": {
+      "day_0_day": "SE winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 4 ft at 13 seconds and SW 2 to 4 ft at 11 seconds.",
+      "day_0_night": "W winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 3 to 5 ft at 12 seconds and SW 2 to 4 ft at 11 seconds. A slight chance of showers after midnight.",
+      "day_1_day": "E winds 5 to 10 kt, becoming SW in the afternoon. Wind waves 2 ft or less. Mixed swell W 3 to 5 ft at 12 seconds and SW 3 ft at 12 seconds. A chance of showers.",
+      "day_1_night": "S winds 5 to 10 kt. Wind waves 2 ft or less. W swell 4 to 6 ft at 12 seconds. Showers.",
+      "day_2_day": "SE winds 5 to 10 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft at 11 seconds and SW 2 to 4 ft at 11 seconds. Rain.",
+      "day_2_night": "S winds 10 to 15 kt in the evening, becoming 5 to 10 kt. Wind waves 2 ft or less. W swell 2 ft at 11 seconds. W swell 3 to 4 ft, then W 2 ft after midnight. Rain. A slight chance of tstms after midnight.",
+      "day_3_day": "SE winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 2 to 3 ft and S 2 to 4 ft. Showers and a chance of tstms.",
+      "day_4_day": "E winds 10 to 15 kt. Wind waves 2 ft or less. Mixed swell W 3 to 5 ft and S 2 to 4 ft. Rain likely and a chance of tstms. Winds and seas higher in and near tstms."
+    },
+    "actual": {
+      "day_0": {
+        "date": "2023-12-17",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 5.4,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 5.8,
+            "gst_max_kt": 8.4
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 5.1,
+            "gst_max_kt": 7.4
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 7.1,
+            "gst_max_kt": 12.2
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 8.2,
+            "gst_max_kt": 13.3
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 5.4,
+            "gst_max_kt": 10.6
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 2.7,
+            "gst_max_kt": 6.3
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 4.6,
+            "gst_max_kt": 6.6
+          }
+        ]
+      },
+      "day_1": {
+        "date": "2023-12-18",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 3.4,
+            "gst_max_kt": 4.8
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 4.6,
+            "gst_max_kt": 6.5
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 3.6,
+            "gst_max_kt": 4.8
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 4.3,
+            "gst_max_kt": 6.8
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 3.3,
+            "gst_max_kt": 4.6
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 4.1,
+            "gst_max_kt": 5.9
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 7.1,
+            "gst_max_kt": 9.5
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 8.8,
+            "gst_max_kt": 14.8
+          }
+        ]
+      },
+      "day_2": {
+        "date": "2023-12-19",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 1.1,
+            "gst_max_kt": 2.8
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 4.5,
+            "gst_max_kt": 5.9
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 4.5,
+            "gst_max_kt": 6.3
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 5.2,
+            "gst_max_kt": 6.5
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 4.7,
+            "gst_max_kt": 6.3
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 2.7,
+            "gst_max_kt": 4.0
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 3.2,
+            "gst_max_kt": 4.9
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 3.2,
+            "gst_max_kt": 5.3
+          }
+        ]
+      },
+      "day_3": {
+        "date": "2023-12-20",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 13.8,
+            "gst_max_kt": 18.4
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 13.2,
+            "gst_max_kt": 17.9
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 9.1,
+            "gst_max_kt": 12.5
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 10.1,
+            "gst_max_kt": 13.3
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 11.8,
+            "gst_max_kt": 16.7
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 14.1,
+            "gst_max_kt": 19.8
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 11.2,
+            "gst_max_kt": 16.3
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 8.8,
+            "gst_max_kt": 11.4
+          }
+        ]
+      },
+      "day_4": {
+        "date": "2023-12-21",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 14.8,
+            "gst_max_kt": 19.0
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 14.2,
+            "gst_max_kt": 18.6
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 9.4,
+            "gst_max_kt": 12.7
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 12.5,
+            "gst_max_kt": 22.0
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 10.9,
+            "gst_max_kt": 15.0
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 9.8,
+            "gst_max_kt": 14.4
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 7.2,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 7.3,
+            "gst_max_kt": 9.9
+          }
+        ]
+      }
+    }
+  },
+  {
+    "issued": "2022-12-25T03:06:00-08:00",
+    "issuance_time": "03:06",
+    "number": 1,
+    "complete": true,
+    "warnings": null,
+    "forecast": {
+      "day_0_day": "N winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 to 4 ft at 13 seconds.",
+      "day_0_night": "NW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 2 to 4 ft at 14 seconds.",
+      "day_1_day": "Winds variable 10 kt or less. Wind waves 2 ft or less. W swell 2 to 4 ft at 14 seconds.",
+      "day_1_night": "Winds variable 10 kt or less. Wind waves 2 ft or less. W swell 3 to 4 ft at 15 seconds, building to 4 to 6 ft at 15 seconds after midnight.",
+      "day_2_day": "SW winds 5 to 10 kt. Wind waves 2 ft or less. W swell 5 to 7 ft at 14 seconds. A chance of rain in the afternoon.",
+      "day_2_night": "S winds 10 kt in the evening, becoming 10 to 15 kt. Wind waves 2 ft or less. W swell 3 to 5 ft at 14 seconds, building to 5 to 7 ft at 14 seconds after midnight. Rain.",
+      "day_3_day": "W winds 10 to 20 kt. Wind waves 2 to 3 ft. W swell 5 to 7 ft. A chance of rain.",
+      "day_4_day": "W winds 10 to 15 kt. Wind waves 2 ft or less. W swell 4 to 6 ft. A chance of rain."
+    },
+    "actual": {
+      "day_0": {
+        "date": "2022-12-25",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 5.5,
+            "gst_max_kt": 7.4
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 6.0,
+            "gst_max_kt": 8.9
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 8.3,
+            "gst_max_kt": 10.4
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 7.5,
+            "gst_max_kt": 9.9
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 9.8,
+            "gst_max_kt": 11.8
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 8.0,
+            "gst_max_kt": 10.6
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 4.4,
+            "gst_max_kt": 8.9
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 1.2,
+            "gst_max_kt": 3.8
+          }
+        ]
+      },
+      "day_1": {
+        "date": "2022-12-26",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 2.3,
+            "gst_max_kt": 4.4
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 2.8,
+            "gst_max_kt": 6.1
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 6.5,
+            "gst_max_kt": 8.0
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 7.0,
+            "gst_max_kt": 8.7
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 6.1,
+            "gst_max_kt": 8.4
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 6.8,
+            "gst_max_kt": 9.1
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 4.2,
+            "gst_max_kt": 7.6
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 2.2,
+            "gst_max_kt": 6.1
+          }
+        ]
+      },
+      "day_2": {
+        "date": "2022-12-27",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 1.9,
+            "gst_max_kt": 4.9
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 3.9,
+            "gst_max_kt": 7.0
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 4.6,
+            "gst_max_kt": 6.5
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 3.2,
+            "gst_max_kt": 4.4
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 4.3,
+            "gst_max_kt": 5.7
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 3.8,
+            "gst_max_kt": 6.1
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 2.2,
+            "gst_max_kt": 6.5
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 4.9,
+            "gst_max_kt": 7.0
+          }
+        ]
+      },
+      "day_3": {
+        "date": "2022-12-28",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 7.9,
+            "gst_max_kt": 10.1
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 6.7,
+            "gst_max_kt": 8.2
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 6.3,
+            "gst_max_kt": 8.9
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 4.8,
+            "gst_max_kt": 6.8
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 3.3,
+            "gst_max_kt": 4.6
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 7.5,
+            "gst_max_kt": 9.9
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 8.9,
+            "gst_max_kt": 12.0
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 9.0,
+            "gst_max_kt": 11.4
+          }
+        ]
+      },
+      "day_4": {
+        "date": "2022-12-29",
+        "hourly": [
+          {
+            "hour": "10:00-11:00",
+            "wspd_avg_kt": 5.0,
+            "gst_max_kt": 7.4
+          },
+          {
+            "hour": "11:00-12:00",
+            "wspd_avg_kt": 4.9,
+            "gst_max_kt": 7.6
+          },
+          {
+            "hour": "12:00-13:00",
+            "wspd_avg_kt": 5.5,
+            "gst_max_kt": 7.6
+          },
+          {
+            "hour": "13:00-14:00",
+            "wspd_avg_kt": 5.2,
+            "gst_max_kt": 6.8
+          },
+          {
+            "hour": "14:00-15:00",
+            "wspd_avg_kt": 4.1,
+            "gst_max_kt": 5.7
+          },
+          {
+            "hour": "15:00-16:00",
+            "wspd_avg_kt": 4.2,
+            "gst_max_kt": 5.5
+          },
+          {
+            "hour": "16:00-17:00",
+            "wspd_avg_kt": 4.8,
+            "gst_max_kt": 7.2
+          },
+          {
+            "hour": "17:00-18:00",
+            "wspd_avg_kt": 4.2,
+            "gst_max_kt": 6.3
+          }
+        ]
+      }
+    }
+  }
+]

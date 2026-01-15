@@ -1,0 +1,232 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
+import { formatInTimeZone } from 'date-fns-tz';
+import { fileCache, createEtagCache } from '../../../../lib/cache/file-cache';
+
+interface WindData {
+  datetime: string;
+  windDirection: number;
+  windSpeed: number;
+  gustSpeed: number;
+  pressure: number;
+  airTemp: number;
+  waterTemp: number;
+}
+
+const FETCH_TIMEOUT_MS = 8000;
+
+const fetchWithTimeout = async (url: string, options: RequestInit, timeoutMs: number) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+export async function GET(request: NextRequest) {
+  try {
+    // Create cache key based on current minute for fresh wind data each minute
+    const now = new Date();
+    const minuteKey = formatInTimeZone(now, PACIFIC_TIMEZONE, 'yyyy-MM-dd-HH-mm');
+    const cacheKey = `wind-data-${minuteKey}`;
+
+    console.log('[WIND-DATA] Cache key:', cacheKey);
+
+    // Try ETag cache first for HTTP conditional requests
+    try {
+      const { data, etag, cached } = await createEtagCache<any>(
+        fileCache,
+        cacheKey,
+        5 * 60 * 1000 // 5 minutes cache (less than wind-history which is hourly)
+      )(
+        request,
+        async () => {
+          console.log('[WIND-DATA] Cache miss, fetching fresh current wind data...');
+
+          let debugInfo: any = {};
+          const startTime = Date.now();
+
+          // Fetch from NOAA...
+          let response: Response | null = null;
+          let isTabularFormat = false;
+          let rawData: string = '';
+
+          // Always try tabular format first (better quality data)
+          try {
+            const tabularResponse = await fetchWithTimeout('https://www.ndbc.noaa.gov/data/realtime2/AGXC1.txt', {
+              headers: { 'User-Agent': 'Wind-Forecast-App/1.0' }
+            }, FETCH_TIMEOUT_MS);
+
+            if (tabularResponse.ok) {
+              rawData = await tabularResponse.text();
+              const lines = rawData.trim().split('\n');
+
+              if (lines.length > 1) {
+                isTabularFormat = true;
+                response = tabularResponse;
+                debugInfo.dataSource = 'tabular';
+                debugInfo.dataQuality = 'high (real-time latest readings)';
+                console.log('[WIND-DATA] Using tabular format - highest data quality');
+              }
+            }
+          } catch (error) {
+            debugInfo.tabularError = error instanceof Error ? error.message : String(error);
+            console.log('Tabular format failed, will attempt fallback...');
+          }
+
+          // Fallback to 5-day data only if tabular fails
+          if (!isTabularFormat) {
+            response = await fetchWithTimeout('https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt', {
+              headers: { 'User-Agent': 'Wind-Forecast-App/1.0' }
+            }, FETCH_TIMEOUT_MS);
+            debugInfo.dataSource = 'five-day-fallback';
+            debugInfo.dataQuality = 'lower (delayed vs real-time)';
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            rawData = await response.text();
+            console.log('[WIND-DATA] Using 5-day fallback format');
+          }
+
+          // Parse the data using appropriate format
+          const lines = rawData.trim().split('\n');
+          if (lines.length < 2) {
+            throw new Error(`Not enough data lines. Expected at least 2, got ${lines.length}`);
+          }
+
+          let windData: WindData;
+
+          if (isTabularFormat) {
+            // Parse tabular format (from AGXC1.txt)
+            const dataLine = lines[lines.length - 1];
+            const parts = dataLine.split(/\s+/);
+
+            if (parts.length < 13) {
+              throw new Error(`Invalid tabular data format. Expected at least 13 columns, got ${parts.length}`);
+            }
+
+            windData = {
+              datetime: `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T${parts[3].padStart(2, '0')}:${parts[4].padStart(2, '0')}:00Z`,
+              windDirection: parseFloat(parts[5]) || 0,
+              windSpeed: Math.round(parseFloat(parts[6]) * 1.94384 * 10) / 10 || 0,
+              gustSpeed: Math.round(parseFloat(parts[7]) * 1.94384 * 10) / 10 || 0,
+              pressure: parseFloat(parts[12]) || 0,
+              airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
+              waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
+            };
+          } else {
+            // Parse 5-day format (from AGXC1_5day.txt)
+            const dataLines = lines.slice(2); // Skip header lines
+            const latestLine = dataLines[0]; // First data line has the most recent data
+
+            if (!latestLine || latestLine.split(/\s+/).length < 8) {
+              throw new Error('Could not parse 5-day format data');
+            }
+
+            const parts = latestLine.split(/\s+/);
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]);
+            const day = parseInt(parts[2]);
+            const hour = parseInt(parts[3]);
+            const minute = parseInt(parts[4]);
+
+            windData = {
+              datetime: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`,
+              windDirection: parseFloat(parts[5]) || 0,
+              windSpeed: Math.round(parseFloat(parts[6]) * 1.94384 * 10) / 10 || 0,
+              gustSpeed: Math.round(parseFloat(parts[7]) * 1.94384 * 10) / 10 || 0,
+              pressure: parseFloat(parts[12]) || 0,
+              airTemp: parseFloat(parts[13]) ? Math.round((parseFloat(parts[13]) * 9/5 + 32) * 10) / 10 : 0,
+              waterTemp: parseFloat(parts[14]) ? Math.round((parseFloat(parts[14]) * 9/5 + 32) * 10) / 10 : 0
+            };
+          }
+
+          // Handle invalid data
+          if (windData.windDirection === 99 || windData.windDirection >= 999) windData.windDirection = 0;
+          if (windData.windSpeed >= 99) windData.windSpeed = 0;
+          if (windData.gustSpeed >= 99) windData.gustSpeed = 0;
+          if (windData.pressure >= 9999) windData.pressure = 0;
+          if (windData.airTemp >= 999) windData.airTemp = 0;
+          if (windData.waterTemp >= 999) windData.waterTemp = 0;
+
+          console.log('[WIND-DATA] Fresh data processed in', Date.now() - startTime, 'ms');
+
+          // Calculate data age and convert to PST
+          const dataTimestamp = new Date(windData.datetime);
+          const nowPST = new Date();
+          const dataAgeMins = Math.floor((nowPST.getTime() - dataTimestamp.getTime()) / (1000 * 60));
+
+          const dataPST = new Date(dataTimestamp.getTime() - (8 * 60 * 60 * 1000));
+          const formattedTimePST = dataPST.toLocaleString('en-US', {
+            timeZone: PACIFIC_TIMEZONE,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }) + ' PST';
+
+          const dataAge = {
+            minutes: dataAgeMins,
+            isOld: dataAgeMins > 12,
+            warning: dataAgeMins > 12 ? `WARNING: Latest station reading ${dataAgeMins} min ago` : null,
+            timestamp: formattedTimePST
+          };
+
+          return {
+            success: true,
+            data: { ...windData, datetime: formattedTimePST },
+            dataAge,
+            station: 'AGXC1',
+            location: 'Los Angeles, CA',
+            lastUpdated: new Date().toISOString(),
+            debug: process.env.NODE_ENV === 'development' ? debugInfo : undefined
+          };
+        }
+      );
+
+      // Return cached or fresh data with ETag header
+      console.log(`[WIND-DATA] ${cached ? 'CACHED' : 'FRESH'} data served`);
+
+      return NextResponse.json(data, {
+        headers: {
+          'ETag': etag,
+          'Cache-Control': 'public, max-age=30', // Browser cache for 30 seconds
+        },
+      });
+
+    } catch (etagError: any) {
+      // Handle conditional request - return 304 Not Modified
+      if (etagError.status === 304) {
+        console.log('[WIND-DATA] Conditionally cached via ETag');
+        return new Response(null, {
+          status: 304,
+          headers: { 'ETag': etagError.etag },
+        });
+      }
+      throw etagError;
+    }
+
+  } catch (error) {
+    console.error('[WIND-DATA] Error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch wind data',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        debug: {
+          errorStack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        }
+      },
+      { status: 500 }
+    );
+  }
+}

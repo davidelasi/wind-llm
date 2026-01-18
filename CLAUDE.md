@@ -598,6 +598,59 @@ try {
    - Don't rely on in-memory state persisting between requests
    - Use external caching (Redis, KV store) for shared state
 
+#### Local Development: No Database Required
+
+**⚠️ PHILOSOPHY:** We do NOT maintain a local copy of the production database.
+
+When running locally (`localhost` or `NODE_ENV=development`), all database calls are **automatically skipped** and return empty/default results. This is controlled by `skipDatabaseInDevelopment: true` in `config/model_config.json`.
+
+**Why this approach:**
+- Production database (Vercel Postgres/Neon) is cloud-only
+- No need to set up local PostgreSQL infrastructure
+- UI development can proceed without database connectivity
+- Actual data is only needed for production validation
+
+**How it works:**
+
+```typescript
+// All database services use this pattern:
+import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
+
+export async function getForecasts() {
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getForecasts');
+    return [];  // Return appropriate empty result
+  }
+  // ... actual database query
+}
+```
+
+**Affected services:**
+- `lib/services/forecast-storage.ts` - All forecast CRUD operations
+- `lib/services/wind-actuals-storage.ts` - All wind actuals operations
+- `lib/services/forecast-comparison.ts` - Statistics comparisons
+- `api/admin/purge-forecasts/route.ts` - Admin operations
+
+**Local development behavior:**
+| Operation | Local Return Value | Notes |
+|-----------|-------------------|-------|
+| Store forecast | `null` | Silently skipped |
+| Get forecasts | `[]` | Empty array |
+| Get wind actuals | `[]` | Empty array |
+| Rate limit count | `0` | Allows LLM testing if enabled |
+| Forecast exists check | `false` | Treats as "no existing forecast" |
+
+**To test with actual database (advanced):**
+1. Set up Vercel Postgres locally (complex, not recommended)
+2. Or set `skipDatabaseInDevelopment: false` in config
+3. Ensure `DATABASE_URL` environment variable is configured
+
+**Best practice for new database features:**
+1. Add `shouldSkipDatabase()` check at the start of each database function
+2. Return appropriate empty/default value (not an error)
+3. Use `logDatabaseSkipped()` to log for debugging
+4. Test that UI handles empty data gracefully
+
 #### Testing for Production Compatibility
 
 Before deploying new features, verify:

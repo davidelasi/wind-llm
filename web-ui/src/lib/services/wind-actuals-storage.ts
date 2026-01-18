@@ -12,6 +12,7 @@
 
 import { sql } from '@vercel/postgres';
 import type { WindDataPoint } from '@/types/wind-data';
+import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
 
 export interface WindActualRow {
   id: number;
@@ -38,6 +39,12 @@ export interface WindActualRow {
  * @returns Number of rows successfully inserted/updated
  */
 export async function storeWindActuals(dataPoints: WindDataPoint[]): Promise<number> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('storeWindActuals');
+    return 0;
+  }
+
   try {
     let storedCount = 0;
 
@@ -114,6 +121,12 @@ export async function storeWindActuals(dataPoints: WindDataPoint[]): Promise<num
  * @returns Array of hourly wind actuals for the date (0-9 rows, may have gaps)
  */
 export async function getWindActualsForDate(date: string): Promise<WindActualRow[]> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getWindActualsForDate');
+    return [];
+  }
+
   try {
     const result = await sql`
       SELECT *
@@ -137,6 +150,12 @@ export async function getWindActualsForDate(date: string): Promise<WindActualRow
  * @returns Array of most recent wind actuals, sorted newest first
  */
 export async function getRecentWindActuals(limit: number = 50): Promise<WindActualRow[]> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getRecentWindActuals');
+    return [];
+  }
+
   try {
     const result = await sql`
       SELECT *
@@ -160,6 +179,12 @@ export async function getRecentWindActuals(limit: number = 50): Promise<WindActu
  * @returns True if any actuals exist for the date, false otherwise
  */
 export async function windActualsExistForDate(date: string): Promise<boolean> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('windActualsExistForDate');
+    return false;
+  }
+
   try {
     const result = await sql`
       SELECT COUNT(*) as count
@@ -186,6 +211,17 @@ export async function getWindActualsCount(): Promise<{
   earliestDate: string | null;
   latestDate: string | null;
 }> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getWindActualsCount');
+    return {
+      totalDays: 0,
+      totalHours: 0,
+      earliestDate: null,
+      latestDate: null
+    };
+  }
+
   try {
     const result = await sql`
       SELECT

@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { createHash } from 'crypto';
+import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
 
 export interface ForecastPrediction {
   time: string;
@@ -51,6 +52,12 @@ export function generateForecastHash(nwsIssuedAt: string, forecastText: string):
  * Returns forecast ID if successful, null if failed or duplicate
  */
 export async function storeForecast(data: ForecastStorageData): Promise<string | null> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('storeForecast');
+    return null;
+  }
+
   try {
     // Generate deduplication hash
     const forecastHash = generateForecastHash(data.nwsIssuedAt, data.nwsForecastText);
@@ -136,6 +143,12 @@ export async function storeForecast(data: ForecastStorageData): Promise<string |
  * Query recent forecasts for debugging/verification
  */
 export async function getRecentForecasts(limit: number = 10) {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getRecentForecasts');
+    return [];
+  }
+
   try {
     const result = await sql`
       SELECT
@@ -176,6 +189,12 @@ export async function getMostRecentForecast(): Promise<{
   temperature: number;
   source: string;
 } | null> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getMostRecentForecast');
+    return null;
+  }
+
   try {
     const result = await sql`
       SELECT
@@ -243,6 +262,12 @@ export async function getMostRecentForecastBefore(cutoffIso: string): Promise<{
   temperature: number;
   source: string;
 } | null> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getMostRecentForecastBefore');
+    return null;
+  }
+
   try {
     const result = await sql`
       SELECT
@@ -289,6 +314,12 @@ export async function getMostRecentForecastBefore(cutoffIso: string): Promise<{
  * Used for rate limiting
  */
 export async function getDailyLLMCallCount(): Promise<number> {
+  // Skip database in local development - return 0 to allow testing
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getDailyLLMCallCount');
+    return 0;
+  }
+
   try {
     const result = await sql`
       SELECT COUNT(*) as call_count
@@ -312,6 +343,12 @@ export async function getDailyLLMCallCount(): Promise<number> {
  * Returns true if forecast exists, false otherwise
  */
 export async function forecastExistsForNWS(nwsIssuedAt: string): Promise<boolean> {
+  // Skip database in local development - return false to allow testing
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('forecastExistsForNWS');
+    return false;
+  }
+
   try {
     const result = await sql`
       SELECT id FROM forecasts

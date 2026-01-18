@@ -13,8 +13,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sql } from '@vercel/postgres';
+import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
 
 export async function DELETE(request: NextRequest) {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('DELETE /api/admin/purge-forecasts');
+    return NextResponse.json({
+      success: true,
+      message: 'Database operations skipped in local development',
+      recordsDeleted: 0,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   try {
     // Verify admin authorization
     const adminKey = request.headers.get('x-admin-key');
@@ -60,6 +72,21 @@ export async function DELETE(request: NextRequest) {
 
 // Also support GET to check status (no auth required)
 export async function GET() {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('GET /api/admin/purge-forecasts');
+    return NextResponse.json({
+      success: true,
+      stats: {
+        totalRecords: 0,
+        freshLlmRecords: 0,
+        oldestRecord: null,
+        newestRecord: null
+      },
+      note: 'Database operations skipped in local development'
+    });
+  }
+
   try {
     const result = await sql`
       SELECT

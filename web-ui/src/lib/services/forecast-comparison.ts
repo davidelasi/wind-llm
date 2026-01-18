@@ -9,6 +9,7 @@
 
 import { sql } from '@vercel/postgres';
 import { getWindActualsForDate, type WindActualRow } from './wind-actuals-storage';
+import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
 import { type ForecastPrediction } from './forecast-storage';
 import { formatInTimeZone } from 'date-fns-tz';
 import { addDays, parseISO } from 'date-fns';
@@ -271,6 +272,12 @@ async function compareDayForecastToActuals(
  * Get forecast by ID from database
  */
 async function getForecastById(forecastId: string): Promise<StoredForecast | null> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getForecastById');
+    return null;
+  }
+
   try {
     const result = await sql`
       SELECT
@@ -397,6 +404,12 @@ export async function getAvailableForecasts(limit: number = 20): Promise<{
   month: string;
   forecastNumber: number;
 }[]> {
+  // Skip database in local development
+  if (shouldSkipDatabase()) {
+    logDatabaseSkipped('getAvailableForecasts');
+    return [];
+  }
+
   try {
     const result = await sql`
       SELECT

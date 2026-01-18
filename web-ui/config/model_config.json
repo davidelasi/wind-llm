@@ -10,6 +10,7 @@
   "enableRateLimit": true,
   "allowOnDemandGeneration": true,
   "allowLocalLlmCalls": false,
+  "skipDatabaseInDevelopment": true,
   "useDummyForecastWhenUnavailable": false,
   "convertForecastDaysToRelative": false,
   "includeGeographicContext": true,
@@ -22,6 +23,7 @@
     "enableRateLimit": "Master switch for rate limiting. If false, maxDailyLlmCalls is ignored. Default: true for cost protection.",
     "allowOnDemandGeneration": "Allow user page loads to trigger new forecast generation. If false, only cron jobs can generate forecasts (production mode). If true, page loads can generate forecasts when NWS has new data (development/debug mode). Default: true for flexibility, set to false in production for cron-only mode.",
     "allowLocalLlmCalls": "Allow LLM calls in local development when true. If false, set ALLOW_LLM_CALLS=true to opt in.",
+    "skipDatabaseInDevelopment": "Skip all database calls when running locally (localhost/development). Returns empty results instead of errors. DEFAULT: true. This prevents the need for a local database copy.",
     "useDummyForecastWhenUnavailable": "If true, return realistic dummy forecast data when LLM forecast fails and no cache available. DEFAULT: false for production safety. Use for development/testing only.",
     "convertForecastDaysToRelative": "If true, use script to convert weekday names (MON, TUE) to relative days (day_0, day_1). If false, keep original weekday format and tell LLM the mapping via prompt instruction. DEFAULT: false (LLM instruction approach is more robust).",
     "includeGeographicContext": "If true, include geographic context from prompt_config.json to help LLM interpret sub-area mentions (e.g., 'Malibu to Santa Monica' vs 'San Pedro Channel'). DEFAULT: true. Can be disabled for A/B testing."

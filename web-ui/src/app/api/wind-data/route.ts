@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PACIFIC_TIMEZONE } from '@/lib/timezone-utils';
+import { PACIFIC_TIMEZONE, formatPacificDateTime } from '@/lib/timezone-utils';
 import { formatInTimeZone } from 'date-fns-tz';
 import { fileCache, createEtagCache } from '../../../../lib/cache/file-cache';
 
@@ -161,16 +161,8 @@ export async function GET(request: NextRequest) {
           const nowPST = new Date();
           const dataAgeMins = Math.floor((nowPST.getTime() - dataTimestamp.getTime()) / (1000 * 60));
 
-          const dataPST = new Date(dataTimestamp.getTime() - (8 * 60 * 60 * 1000));
-          const formattedTimePST = dataPST.toLocaleString('en-US', {
-            timeZone: PACIFIC_TIMEZONE,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          }) + ' PST';
+          // Format timestamp in Pacific timezone (handles DST automatically)
+          const formattedTimePST = formatPacificDateTime(dataTimestamp);
 
           const dataAge = {
             minutes: dataAgeMins,

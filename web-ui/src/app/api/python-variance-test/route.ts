@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     // Run the Python script
     console.log('[PYTHON-VARIANCE] Running Python variance test...');
 
-    const scriptPath = path.join(process.cwd(), '..', 'scripts', 'variance_test.py');
+    const scriptPath = path.join(process.cwd(), '..', 'scripts', 'analysis', 'variance_test.py');
     const pythonPath = path.join(process.cwd(), '..', 'venv', 'bin', 'python3');
     const command = `"${pythonPath}" "${scriptPath}" ${numRuns} ${normalizedTemp}`;
 

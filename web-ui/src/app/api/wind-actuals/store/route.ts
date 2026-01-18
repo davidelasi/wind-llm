@@ -15,6 +15,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storeWindActuals } from '@/lib/services/wind-actuals-storage';
 import { parseNoaaData, convertToHourlyWindData, filterToForecastWindow } from '@/lib/services/wind-aggregation';
+import { getPacificYesterday } from '@/lib/timezone-utils';
 
 const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
 
@@ -41,13 +42,8 @@ export async function POST(request: NextRequest) {
       }
       targetDate = dateParam;
     } else {
-      // Default to yesterday in PST
-      const nowPST = new Date().toLocaleString('en-US', {
-        timeZone: 'America/Los_Angeles'
-      });
-      const yesterday = new Date(nowPST);
-      yesterday.setDate(yesterday.getDate() - 1);
-      targetDate = yesterday.toISOString().split('T')[0];
+      // Default to yesterday in Pacific timezone (DST-safe)
+      targetDate = getPacificYesterday();
     }
 
     console.log(`[WIND-ACTUALS-STORE] Manual trigger for date: ${targetDate}`);

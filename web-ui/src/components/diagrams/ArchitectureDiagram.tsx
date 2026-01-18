@@ -44,11 +44,10 @@ export default function ArchitectureDiagram() {
           isExpanded={isExpanded('frontend')}
           onToggle={() => toggleLayer('frontend')}
         >
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Component name="Home Page" route="/" />
             <Component name="Sausage Mode" route="/sausage-mode" />
             <Component name="Validation Test" route="/validation-test" />
-            <Component name="Debug Page" route="/debug" />
           </div>
         </Layer>
 

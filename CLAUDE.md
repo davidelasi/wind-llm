@@ -109,7 +109,6 @@ Human-readable summaries are planned but not implemented in production.
 - Area Forecast deeper integration (beyond display)
 - Wind direction modeling
 - El Niño/La Niña indicators
-- Longer lead times (D+3, D+4, D+5)
 - Fine-tuning vs few-shot
 
 ---
@@ -165,7 +164,7 @@ All LLM model parameters are controlled by a single configuration file: `config/
 **ALL three forecasting components use the same configuration:**
 1. **Production LLM Forecast API** (`/api/llm-forecast`)
 2. **Production Validation API** (`/api/validation-variance`)
-3. **Python Variance Test Script** (`scripts/variance_test.py`)
+3. **Python Variance Test Script** (`scripts/analysis/variance_test.py`)
 
 This ensures:
 - Consistent behavior across production and testing
@@ -181,7 +180,7 @@ This ensures:
 3. No code changes required
 
 **To test different temperatures:**
-- Python script supports temperature override: `python3 variance_test.py 5 0.0`
+- Python script supports temperature override: `python3 scripts/analysis/variance_test.py 5 0.0`
 - API endpoint supports temperature parameter: `/api/python-variance-test?temperature=0.0`
 - Results are cached separately per temperature value
 
@@ -346,20 +345,34 @@ The geographic context text is stored in `config/prompt_config.json` and can be 
 
 ### Cron Schedule (vercel.json)
 
+**Important**: Vercel cron jobs run on UTC time. The schedules below show both UTC and Pacific time equivalents.
+
 ```json
 {
   "crons": [
     {
-      "path": "/api/cron/generate-forecast",
-      "schedule": "0 17 * * *"   // 17:00 UTC = 9:00 AM PST
-    },
-    {
       "path": "/api/cron/store-wind-actuals",
       "schedule": "0 10 * * *"   // 10:00 UTC = 2:00 AM PST
+    },
+    {
+      "path": "/api/cron/generate-forecast",
+      "schedule": "0 17 * * *"   // 17:00 UTC = 9:00 AM PST
     }
   ]
 }
 ```
+
+**Cron Job Details:**
+
+| Job | Schedule (UTC) | Schedule (PST) | Purpose |
+|-----|----------------|----------------|---------|
+| `store-wind-actuals` | 10:00 UTC | 2:00 AM PST | Store previous day's actual wind measurements |
+| `generate-forecast` | 17:00 UTC | 9:00 AM PST | Generate LLM forecast from latest NWS data |
+
+**Verification:**
+- Each cron job logs detailed timestamps and run IDs to Vercel logs
+- Check Vercel dashboard > Functions > Logs to verify cron execution
+- Logs include both UTC and Pacific timestamps for debugging
 
 ---
 
@@ -405,6 +418,26 @@ Seas 10 to 12 ft. Small Craft Advisory in effect.
   - **WDIR**: Wind direction in degrees, integer
   - **PRES**: Pressure in hPa, 1 decimal place
   - **ATMP**: Air temperature in °C, 1 decimal place
+
+### Timestamp Storage Standard
+
+**Format**: All timestamps use ISO 8601 with Pacific timezone offset (DST-aware):
+- PST (winter): `2025-01-15T10:23:00-08:00`
+- PDT (summer): `2025-07-15T10:23:00-07:00`
+
+**Key Rules**:
+1. **Never hardcode timezone offsets** (-8 or -7 hours) - use library functions
+2. **Always use timezone-utils.ts** - centralized DST-aware utilities
+3. **Use getPacificDateHour()** for forecast vs actuals comparisons
+
+**Available Utilities** (`web-ui/src/lib/timezone-utils.ts`):
+| Function | Purpose |
+|----------|---------|
+| `getPacificISOString(date)` | ISO string with Pacific offset |
+| `formatPacificDateTime(date)` | Human-readable with PST/PDT indicator |
+| `getPacificDateString(date)` | YYYY-MM-DD in Pacific timezone |
+| `getPacificDateHour(date)` | Extract date+hour for forecast comparisons |
+| `getPacificYesterday()` | Yesterday's date in Pacific (DST-safe) |
 
 ## DEPLOYMENT ENVIRONMENT CONSTRAINTS
 
@@ -615,8 +648,7 @@ wind-llm/
 │   │   └── wind/         # Raw NOAA buoy measurements
 │   ├── cleaned/          # Processed/cleaned data
 │   └── training/         # LLM training examples
-│       ├── few_shot_examples_json/  # JSON format (production)
-│       └── few_shot_examples_toon/  # TOON v2.0 format (alternative, 100% data preservation)
+│       └── few_shot_examples_json/  # JSON format (production)
 ├── scripts/
 │   ├── processing/       # Core data pipeline scripts
 │   ├── training/         # ML/training related scripts
@@ -707,6 +739,10 @@ scripts/
 **`analyze_specific_forecast.py`** - Deep dive analysis of individual forecasts
 **`diagnose_corrupted_forecasts.py`** - Identify data corruption patterns
 **`diagnose_day_offsets.py`** - Debug relative day assignment issues
+**`variance_test.py`** - LLM prediction variance analysis
+- Runs multiple LLM predictions to measure natural variance
+- Supports temperature override via command line
+- Outputs statistics (mean, std dev, min, max) for WSPD and GST errors
 
 ### ⚙️ **utilities/** - Batch Operations & Utilities
 
@@ -716,19 +752,12 @@ scripts/
 
 ### 📁 **archive/** - Legacy/Testing Scripts
 
-**Testing Scripts (Preserved for Reference):**
-- `test_few_shot_prediction.py` - Initial prediction testing (2025 mock data)
-- `test_2023_prediction.py` - Historical prediction testing (flawed methodology)
-- `correct_prediction_test.py` - **VALIDATED** prediction testing framework
-  - Uses proper data sources (no contamination)
-  - Loads ALL examples from monthly files (no cherry-picking)
-  - Real NWS forecast integration
-  - Proven 1.0kt WSPD, 1.4kt GST accuracy
+Contains earlier development iterations, testing scripts, and deprecated tools preserved for reference. Not used in production pipeline.
 
-**Current Status:**
-- Archive folder contains earlier versions and specialized tools
-- Includes development iterations and debugging scripts
-- Not used in production pipeline but preserved for reference
+**Key archived scripts:**
+- `correct_prediction_test.py` - Validated prediction testing framework (1.0kt WSPD, 1.4kt GST accuracy)
+- `test_2025_forecast.py`, `batch_test_2025.py` - 2025 validation testing
+- Various legacy processing scripts and development iterations
 
 ### 📊 **Script Status Summary**
 - **Total Scripts**: 27+ including archive
@@ -900,7 +929,6 @@ After extensive testing and debugging, we have established a validated methodolo
 - **Count**: ALL 15 examples from the matching month/forecast-number file
 - **Selection**: No cherry-picking - use complete curated set for maximum diversity
 - **Why**: Comprehensive coverage of wind patterns prevents bias
-- **Note**: Two formats available - JSON (production) and TOON (alternative)
 
 **3. Actual Wind Data:**
 - **Training**: `data/cleaned/wind_2016_processed.txt` through `data/cleaned/wind_2024_processed.txt`
@@ -908,44 +936,6 @@ After extensive testing and debugging, we have established a validated methodolo
 - **Format**: Space-separated values: DATETIME_PST WDIR WSPD GST PRES ATMP
 - **Processing**: Hourly aggregated, 10AM-7PM PST, quality-controlled data
 - **Why**: Matches training data format and processing methodology
-
-### TOON v2.0 Format Specification
-
-**TOON** (Text Object Optimized Notation) is a compact text format designed to reduce token usage for LLM training examples while preserving 100% of data from JSON format.
-
-**Format Characteristics:**
-- **File Extension**: `.toon`
-- **Structure**: One example per line, pipe-separated fields (23 fields total)
-- **Token Savings**: 63.7% reduction compared to JSON (463,627 tokens saved across 732 examples)
-- **Information Loss**: ZERO - complete data preservation verified through roundtrip conversion
-- **Compression**: JSON ~800-1200 tokens/example → TOON ~250-400 tokens/example
-
-**Field Structure (23 fields):**
-```
-ISSUED|ISSUANCE_TIME|NUMBER|COMPLETE|WARNINGS|
-D0_DAY|D0_NIGHT|D1_DAY|D1_NIGHT|D2_DAY|D2_NIGHT|D3_DAY|D3_NIGHT|D4_DAY|
-D0_DATE|D0_WSPD|D0_GST|D1_DATE|D1_WSPD|D1_GST|D2_DATE|D2_WSPD|D2_GST
-```
-
-**Key Features:**
-- **Metadata**: Forecast timestamp, issuance time, forecast number (1-4), completeness flag, warnings
-- **Forecast Periods**: All 9 periods (day_0_day through day_4_day, including day_3_night)
-  - **Note**: FC1/FC2 (morning/midday) include day_0_day; FC3/FC4 (afternoon/evening) start with day_0_night
-- **Wind Data**: 3 days × 8 hourly measurements (24 total) - WSPD averages and GST maximums
-- **NULL Handling**: Missing fields stored as "NULL", excluded during JSON reconstruction
-
-**Converter Tools:**
-- **Script**: `scripts/archive/json_pipeline/convert_json_to_toon.py`
-- **Functions**:
-  - `convert_example_to_toon()` - JSON → TOON
-  - `convert_toon_to_example()` - TOON → JSON
-  - `load_toon_examples()` - Load TOON files for LLM use
-- **Verification**: All 48 files (720 examples) verified for 100% data preservation
-
-**Current Status:**
-- **Production Format**: JSON (used by all forecasting APIs)
-- **TOON v2.0 Status**: Available for future experiments, full feature parity with JSON
-- **Use Cases**: Token-constrained scenarios, high-volume training, cost optimization experiments
 
 ### Validated Results
 
@@ -1003,7 +993,6 @@ The wind forecasting system is **live in production** on Vercel, serving real-ti
 **Training Data:**
 - `web-ui/data/training/few_shot_examples/*.json` - 48 curated files (bundled for Vercel)
 - `data/training/few_shot_examples_json/*.json` - Source files (720 examples)
-- `data/training/few_shot_examples_toon/*.toon` - TOON format (63.7% token savings)
 
 **Configuration:**
 - `web-ui/config/model_config.json` - LLM parameters (temperature, rate limits)
@@ -1012,7 +1001,6 @@ The wind forecasting system is **live in production** on Vercel, serving real-ti
 ### 🔄 FUTURE ENHANCEMENTS:
 
 - Wind direction prediction integration
-- Extended forecast horizon accuracy improvements (D+3, D+4)
 - Seasonal/climate indicator integration (El Niño/La Niña)
 - Model performance monitoring and drift detection
 - Human-readable forecast summaries

@@ -13,6 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { storeWindActuals } from '@/lib/services/wind-actuals-storage';
 import { parseNoaaData, convertToHourlyWindData, filterToForecastWindow } from '@/lib/services/wind-aggregation';
+import { getPacificYesterday, getPacificISOString, formatPacificDateTime } from '@/lib/timezone-utils';
 
 const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
 
@@ -23,6 +24,16 @@ const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
  * This timing ensures NOAA data for the previous day is finalized.
  */
 export async function GET(request: NextRequest) {
+  const startTime = new Date();
+  const cronRunId = `wind-actuals-${Date.now()}`;
+
+  // Log cron execution start with detailed timestamp info
+  console.log(`[CRON-WIND-ACTUALS] ========== CRON JOB STARTED ==========`);
+  console.log(`[CRON-WIND-ACTUALS] Run ID: ${cronRunId}`);
+  console.log(`[CRON-WIND-ACTUALS] UTC Time: ${startTime.toISOString()}`);
+  console.log(`[CRON-WIND-ACTUALS] Pacific Time: ${formatPacificDateTime(startTime)}`);
+  console.log(`[CRON-WIND-ACTUALS] Expected Schedule: 2:00 AM PST (10:00 UTC)`);
+
   try {
     // Verify cron authorization using CRON_SECRET
     const authHeader = request.headers.get('authorization');
@@ -37,22 +48,17 @@ export async function GET(request: NextRequest) {
       : true;
 
     if (!isAuthorized) {
-      console.warn('[CRON] Unauthorized wind actuals storage attempt');
+      console.warn(`[CRON-WIND-ACTUALS] [${cronRunId}] Unauthorized attempt`);
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', runId: cronRunId },
         { status: 401 }
       );
     }
 
-    console.log('[CRON] Starting daily wind actuals storage...');
+    console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Authorization verified (manual: ${manualTrigger})`);
 
-    // Calculate yesterday's date in PST
-    const nowPST = new Date().toLocaleString('en-US', {
-      timeZone: 'America/Los_Angeles'
-    });
-    const yesterday = new Date(nowPST);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const targetDate = yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
+    // Calculate yesterday's date in Pacific timezone (DST-safe)
+    const targetDate = getPacificYesterday();
 
     console.log(`[CRON] Processing wind actuals for date: ${targetDate}`);
 
@@ -116,22 +122,35 @@ export async function GET(request: NextRequest) {
     // Store to database
     const storedCount = await storeWindActuals(forecastWindowData);
 
-    console.log(`[CRON] Successfully stored ${storedCount} hourly records for ${targetDate}`);
+    const endTime = new Date();
+    const durationMs = endTime.getTime() - startTime.getTime();
+
+    console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] ========== SUCCESS ==========`);
+    console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Stored ${storedCount} hourly records for ${targetDate}`);
+    console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Duration: ${durationMs}ms`);
+    console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Completed at: ${formatPacificDateTime(endTime)}`);
 
     return NextResponse.json({
       success: true,
       message: `Stored ${storedCount} hourly wind actuals`,
+      runId: cronRunId,
       date: targetDate,
       hoursStored: storedCount,
       hourRange: '10 AM - 6 PM PST',
-      timestamp: new Date().toISOString()
+      duration: durationMs,
+      completedAt: getPacificISOString(endTime)
     });
 
   } catch (error) {
-    console.error('[CRON] Failed to store wind actuals:', error);
+    const endTime = new Date();
+    const durationMs = endTime.getTime() - startTime.getTime();
+
+    console.error(`[CRON-WIND-ACTUALS] [${cronRunId}] ========== FAILED ==========`);
+    console.error(`[CRON-WIND-ACTUALS] [${cronRunId}] Error:`, error);
+    console.error(`[CRON-WIND-ACTUALS] [${cronRunId}] Duration: ${durationMs}ms`);
 
     if (error instanceof Error) {
-      console.error('[CRON] Error details:', {
+      console.error(`[CRON-WIND-ACTUALS] [${cronRunId}] Error details:`, {
         message: error.message,
         name: error.name,
         stack: error.stack?.split('\n').slice(0, 3)
@@ -141,8 +160,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString(),
-      willRetry: 'Next scheduled run (1 AM PST tomorrow)'
+      runId: cronRunId,
+      duration: durationMs,
+      completedAt: getPacificISOString(endTime),
+      willRetry: 'Next scheduled run (2 AM PST tomorrow)'
     }, { status: 500 });
   }
 }

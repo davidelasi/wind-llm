@@ -17,6 +17,7 @@ import {
   getDailyLLMCallCount,
   type ForecastStorageData
 } from '@/lib/services/forecast-storage';
+import { getPacificISOString } from '@/lib/timezone-utils';
 
 // Load model configuration
 const MODEL_CONFIG_PATH = path.join(process.cwd(), 'config', 'model_config.json');
@@ -1055,7 +1056,7 @@ export async function GET(request: NextRequest) {
 
       const storageData: ForecastStorageData = {
         nwsIssuedAt: nwsForecast.issuedTime,
-        llmGeneratedAt: now.toISOString(),
+        llmGeneratedAt: getPacificISOString(now),
         nwsForecastText: innerWatersForecast,
         llmPrompt: result.prompt,
         model: modelConfig.model,

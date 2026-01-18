@@ -211,3 +211,36 @@ export function formatPacificDateTime(date: Date, includeSeconds: boolean = fals
 export function isPacificDaylightTime(date: Date = new Date()): boolean {
   return getPacificTimezoneAbbr() === 'PDT';
 }
+
+/**
+ * Extract Pacific date and hour from any timestamp
+ * For comparing forecast predictions with actual wind data
+ *
+ * @param date - Date to extract from
+ * @returns Object with pacificDate (YYYY-MM-DD) and pacificHour (0-23)
+ *
+ * @example
+ * const { pacificDate, pacificHour } = getPacificDateHour(new Date());
+ * // Returns: { pacificDate: "2024-03-15", pacificHour: 13 }
+ */
+export function getPacificDateHour(date: Date): { pacificDate: string; pacificHour: number } {
+  const pacificDate = formatInTimeZone(date, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+  const pacificHour = parseInt(formatInTimeZone(date, PACIFIC_TIMEZONE, 'HH'), 10);
+  return { pacificDate, pacificHour };
+}
+
+/**
+ * Get yesterday's date in Pacific timezone as YYYY-MM-DD (DST-safe)
+ *
+ * @returns Yesterday's date string in YYYY-MM-DD format
+ *
+ * @example
+ * const yesterday = getPacificYesterday();
+ * // Returns: "2024-03-14"
+ */
+export function getPacificYesterday(): string {
+  const now = new Date();
+  // Subtract 24 hours then format in Pacific timezone
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  return formatInTimeZone(yesterday, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
+}

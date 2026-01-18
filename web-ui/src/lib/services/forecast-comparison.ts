@@ -70,8 +70,8 @@ export interface ForecastComparison {
  */
 interface StoredForecast {
   id: string;
-  nws_issued_at: string;
-  llm_generated_at: string;
+  nws_issued_at: string | Date;  // Postgres may return Date object
+  llm_generated_at: string | Date;  // Postgres may return Date object
   predictions: {
     day_0: ForecastPrediction[];
     day_1: ForecastPrediction[];
@@ -119,9 +119,12 @@ function hourToDisplayTime(hour: number): string {
 /**
  * Calculate date for a forecast day index based on NWS issuance date
  */
-function getForecastDateForDay(nwsIssuedAt: string, dayIndex: number): string {
+function getForecastDateForDay(nwsIssuedAt: string | Date, dayIndex: number): string {
   // Parse the NWS issuance timestamp and get its Pacific date
-  const issuedDate = parseISO(nwsIssuedAt);
+  // Handle both Date objects and ISO strings from Postgres
+  const issuedDate = nwsIssuedAt instanceof Date
+    ? nwsIssuedAt
+    : parseISO(nwsIssuedAt);
   const pacificDateStr = formatInTimeZone(issuedDate, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
   const baseDate = parseISO(pacificDateStr);
 
@@ -365,7 +368,10 @@ export async function compareForecastToActuals(
       : null;
 
     // Format display date for generated time
-    const generatedDate = parseISO(forecast.llm_generated_at);
+    // Handle both Date objects and ISO strings from Postgres
+    const generatedDate = forecast.llm_generated_at instanceof Date
+      ? forecast.llm_generated_at
+      : parseISO(forecast.llm_generated_at);
     const displayGeneratedAt = formatInTimeZone(
       generatedDate,
       PACIFIC_TIMEZONE,
@@ -374,8 +380,12 @@ export async function compareForecastToActuals(
 
     return {
       forecastId,
-      nwsIssuedAt: forecast.nws_issued_at,
-      llmGeneratedAt: forecast.llm_generated_at,
+      nwsIssuedAt: forecast.nws_issued_at instanceof Date
+        ? forecast.nws_issued_at.toISOString()
+        : forecast.nws_issued_at,
+      llmGeneratedAt: forecast.llm_generated_at instanceof Date
+        ? forecast.llm_generated_at.toISOString()
+        : forecast.llm_generated_at,
       displayGeneratedAt,
       days: dayComparisons,
       overallSummary: {
@@ -425,16 +435,25 @@ export async function getAvailableForecasts(limit: number = 20): Promise<{
     `;
 
     return result.rows.map(row => {
-      const generatedDate = parseISO(row.llm_generated_at);
-      const nwsDate = parseISO(row.nws_issued_at);
+      // Handle both Date objects and ISO strings from Postgres
+      const generatedDate = row.llm_generated_at instanceof Date
+        ? row.llm_generated_at
+        : parseISO(row.llm_generated_at);
+      const nwsDate = row.nws_issued_at instanceof Date
+        ? row.nws_issued_at
+        : parseISO(row.nws_issued_at);
 
       const generatedStr = formatInTimeZone(generatedDate, PACIFIC_TIMEZONE, 'MMM d, h:mm a');
       const nwsStr = formatInTimeZone(nwsDate, PACIFIC_TIMEZONE, 'h:mm a');
 
       return {
         id: row.id,
-        nwsIssuedAt: row.nws_issued_at,
-        llmGeneratedAt: row.llm_generated_at,
+        nwsIssuedAt: row.nws_issued_at instanceof Date
+          ? row.nws_issued_at.toISOString()
+          : row.nws_issued_at,
+        llmGeneratedAt: row.llm_generated_at instanceof Date
+          ? row.llm_generated_at.toISOString()
+          : row.llm_generated_at,
         displayLabel: `${generatedStr} (NWS: ${nwsStr})`,
         month: row.month,
         forecastNumber: row.forecast_number,

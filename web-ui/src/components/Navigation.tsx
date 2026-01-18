@@ -38,7 +38,7 @@ const WindDirectionArrow = ({ direction, size = 16 }: { direction: number; size?
 );
 
 // Compact wind display component
-const CompactWindDisplay = ({ windData }: { windData: NavWindData | null }) => {
+const CompactWindDisplay = ({ windData, isMobile = false }: { windData: NavWindData | null; isMobile?: boolean }) => {
   // Don't show anything if data is missing
   if (!windData || windData.windSpeed === undefined || windData.windDirection === undefined) {
     return null;
@@ -55,9 +55,11 @@ const CompactWindDisplay = ({ windData }: { windData: NavWindData | null }) => {
 
   return (
     <div className="flex flex-col items-center">
-      {/* Single line: Label, Wind Speed & Direction */}
+      {/* Single line: Label (desktop only), Wind Speed & Direction */}
       <div className="flex items-center space-x-2">
-        <span className="text-lg font-bold text-gray-800">Angels Gate Wind</span>
+        {!isMobile && (
+          <span className="text-lg font-bold text-gray-800">Angels Gate Wind</span>
+        )}
         <span className="text-lg font-bold text-gray-800">
           {Math.round(windData.windSpeed)}
           <span className="text-sm text-gray-600 ml-1">kt</span>
@@ -178,21 +180,21 @@ export default function Navigation({ className = '' }: NavigationProps) {
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              {/* Logo/Brand */}
-              <Link href="/" className="flex items-center space-x-2">
+              {/* Logo/Brand - hide text on mobile to give space to wind display */}
+              <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
                 <Wind className="h-8 w-8 text-[#005F73]" />
-                <span className="text-xl font-bold text-gray-900">Wind-LA</span>
+                <span className="text-xl font-bold text-gray-900 hidden sm:inline">Wind-LA</span>
               </Link>
 
-              {/* Center - Compact Wind Display */}
-              <div className="flex-1 flex justify-center">
-                <CompactWindDisplay windData={windData} />
+              {/* Center - Compact Wind Display (no label on mobile) */}
+              <div className="flex-1 flex justify-center px-2">
+                <CompactWindDisplay windData={windData} isMobile={true} />
               </div>
 
               {/* Mobile menu button */}
               <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#005F73] focus:ring-inset min-w-[44px] min-h-[44px]"
+                  className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#005F73] focus:ring-inset min-w-[44px] min-h-[44px] flex-shrink-0"
                   aria-label="Toggle menu"
               >
                 {isMenuOpen ? (

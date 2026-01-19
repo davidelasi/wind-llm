@@ -1186,7 +1186,7 @@ ${llmPrompt}
                     hour: 'numeric',
                     minute: '2-digit',
                     timeZone: 'America/Los_Angeles'
-                  })}</b>. Next update expected {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.
+                  })}</b>. Next update {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.
                 </p>
               </div>
 
@@ -1278,7 +1278,7 @@ ${llmPrompt}
           {/* ========== NOTES SECTION ========== */}
           <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 leading-relaxed">
-              This forecast is based on data from NOAA&apos;s weather station AGXC1 located at Angels Gate, about 2 miles downwind of the spot. The wind at Cabrillo Beach is typically ~3 knots stronger.
+              This forecast is based on data from NOAA&apos;s weather station AGXC1 located at Angels Gate, ~2 miles downwind of the spot. The wind at Cabrillo is typically ~3 knots stronger.
             </p>
           </div>
 

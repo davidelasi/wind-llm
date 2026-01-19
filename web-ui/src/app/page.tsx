@@ -132,6 +132,7 @@ export default function Home() {
 const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
 const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
 const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
+const [isDummyForecast, setIsDummyForecast] = useState(false);
 const [showLlmPrompt, setShowLlmPrompt] = useState(false);
 const [showDebugSection, setShowDebugSection] = useState(false);
 const [showAreaForecast, setShowAreaForecast] = useState(false);
@@ -226,9 +227,44 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
 
 
 
+  // Generate dummy forecast data for localhost testing
+  const generateDummyForecast = () => {
+    const timeLabels = ['11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
+
+    // Generate 5 days of realistic-looking forecast data
+    const dummyPredictions = [];
+    for (let day = 0; day < 5; day++) {
+      const dayData = timeLabels.map((time, hourIndex) => {
+        // Simulate typical afternoon wind build-up pattern
+        const baseWind = 8 + Math.sin((hourIndex / 7) * Math.PI) * 6 + (Math.random() * 3 - 1.5);
+        const windSpeed = Math.round(baseWind * 10) / 10;
+        const gustSpeed = Math.round((windSpeed + 3 + Math.random() * 4) * 10) / 10;
+        // Typical SW-W direction for LA area thermal winds
+        const windDirection = Math.round(220 + Math.random() * 40);
+
+        return {
+          time,
+          windSpeed,
+          gustSpeed,
+          windDirection,
+          windDirectionText: getWindDirectionText(windDirection),
+          isEmpty: false
+        };
+      });
+      dummyPredictions.push(dayData);
+    }
+
+    return dummyPredictions;
+  };
+
+  // Check if we're on localhost
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   const fetchLlmForecast = async (forceUpdate = false) => {
     try {
       setLlmForecastLoading(true);
+      setIsDummyForecast(false);
       const params = new URLSearchParams();
       if (forceUpdate) params.set('force', 'true');
 
@@ -255,15 +291,47 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
 
         setLlmForecastError(null);
       } else {
-        setLlmForecastError(data.error || 'Failed to fetch LLM forecast');
-        if (typeof console !== 'undefined') {
-          console.error('LLM Forecast Error:', data);
+        // On localhost, use dummy forecast data instead of showing error
+        if (isLocalhost) {
+          const dummyData = generateDummyForecast();
+          setLlmForecastData(dummyData);
+          setLlmForecastMeta({
+            lastUpdated: new Date().toISOString(),
+            isLLMGenerated: false,
+            source: 'dummy_localhost',
+            warning: null,
+            nwsForecastTime: new Date().toISOString(),
+            format: 'DUMMY'
+          });
+          setIsDummyForecast(true);
+          setLlmForecastError(null);
+        } else {
+          setLlmForecastError(data.error || 'Failed to fetch LLM forecast');
+          if (typeof console !== 'undefined') {
+            console.error('LLM Forecast Error:', data);
+          }
         }
       }
     } catch (err) {
-      setLlmForecastError('Network error fetching LLM forecast');
-      if (typeof console !== 'undefined') {
-        console.error('LLM Fetch Error:', err);
+      // On localhost, use dummy forecast data instead of showing error
+      if (isLocalhost) {
+        const dummyData = generateDummyForecast();
+        setLlmForecastData(dummyData);
+        setLlmForecastMeta({
+          lastUpdated: new Date().toISOString(),
+          isLLMGenerated: false,
+          source: 'dummy_localhost',
+          warning: null,
+          nwsForecastTime: new Date().toISOString(),
+          format: 'DUMMY'
+        });
+        setIsDummyForecast(true);
+        setLlmForecastError(null);
+      } else {
+        setLlmForecastError('Network error fetching LLM forecast');
+        if (typeof console !== 'undefined') {
+          console.error('LLM Fetch Error:', err);
+        }
       }
     } finally {
       setLlmForecastLoading(false);
@@ -1165,6 +1233,15 @@ ${llmPrompt}
               Cabrillo Wind Forecast (knots)
             </h1>
           </div>
+
+          {/* Dummy Forecast Warning Banner */}
+          {isDummyForecast && (
+            <div className="mx-2 mb-4 bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+              <p className="text-sm text-yellow-800 text-center font-medium">
+                ⚠️ Showing dummy forecast data (localhost testing mode)
+              </p>
+            </div>
+          )}
 
           {/* Day Navigation - Mobile-First Arrow Design */}
           <div className="flex items-center justify-center gap-2 md:gap-3 mb-4">

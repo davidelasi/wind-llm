@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPacificISOString, formatPacificDateTime } from '@/lib/timezone-utils';
+import { logCronStart, logCronComplete } from '@/lib/services/cron-logging';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,9 @@ export async function GET(request: NextRequest) {
   const startTime = new Date();
   const cronRunId = `cron-${Date.now()}`;
 
+  // Log cron start to database
+  await logCronStart('generate-forecast', cronRunId);
+
   // Log cron execution start with detailed timestamp info
   console.log(`[CRON-FORECAST] ========== CRON JOB STARTED ==========`);
   console.log(`[CRON-FORECAST] Run ID: ${cronRunId}`);
@@ -31,6 +35,10 @@ export async function GET(request: NextRequest) {
 
     if (authHeader !== `Bearer ${cronSecret}`) {
       console.error(`[CRON-FORECAST] [${cronRunId}] Unauthorized cron request`);
+      await logCronComplete(cronRunId, 'error', {
+        errorMessage: 'Unauthorized cron request',
+        startTime,
+      });
       return NextResponse.json(
         { success: false, error: 'Unauthorized', runId: cronRunId },
         { status: 401 }
@@ -64,6 +72,22 @@ export async function GET(request: NextRequest) {
       console.log(`[CRON-FORECAST] [${cronRunId}] Duration: ${durationMs}ms`);
       console.log(`[CRON-FORECAST] [${cronRunId}] Completed at: ${formatPacificDateTime(endTime)}`);
 
+      // Log success to database
+      const source = data.data?.source;
+      const forecastGenerated = source === 'fresh_llm';
+      await logCronComplete(cronRunId, 'success', {
+        outcome: source === 'fresh_llm' ? 'New forecast generated' :
+                 source === 'db_current' ? 'NWS unchanged, used cached' :
+                 source,
+        nwsIssuedAt: data.data?.nwsForecastTime,
+        forecastGenerated,
+        startTime,
+        details: {
+          source,
+          lastUpdated: data.data?.lastUpdated,
+        },
+      });
+
       return NextResponse.json({
         success: true,
         message: 'Forecast generated successfully',
@@ -82,6 +106,16 @@ export async function GET(request: NextRequest) {
       console.error(`[CRON-FORECAST] [${cronRunId}] Rate Limit Info:`, data.rateLimitInfo);
       console.error(`[CRON-FORECAST] [${cronRunId}] Duration: ${durationMs}ms`);
 
+      // Log error to database
+      await logCronComplete(cronRunId, 'error', {
+        errorMessage: data.error,
+        startTime,
+        details: {
+          rateLimitInfo: data.rateLimitInfo,
+          httpStatus: response.status,
+        },
+      });
+
       return NextResponse.json({
         success: false,
         error: data.error,
@@ -98,6 +132,15 @@ export async function GET(request: NextRequest) {
     console.error(`[CRON-FORECAST] [${cronRunId}] ========== EXCEPTION ==========`);
     console.error(`[CRON-FORECAST] [${cronRunId}] Error:`, error);
     console.error(`[CRON-FORECAST] [${cronRunId}] Duration: ${durationMs}ms`);
+
+    // Log exception to database
+    await logCronComplete(cronRunId, 'error', {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      startTime,
+      details: {
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+    });
 
     return NextResponse.json({
       success: false,

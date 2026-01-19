@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { storeWindActuals } from '@/lib/services/wind-actuals-storage';
 import { parseNoaaData, convertToHourlyWindData, filterToForecastWindow } from '@/lib/services/wind-aggregation';
 import { getPacificYesterday, getPacificISOString, formatPacificDateTime } from '@/lib/timezone-utils';
+import { logCronStart, logCronComplete } from '@/lib/services/cron-logging';
 
 const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
 
@@ -26,6 +27,9 @@ const NOAA_DATA_URL = 'https://www.ndbc.noaa.gov/data/5day2/AGXC1_5day.txt';
 export async function GET(request: NextRequest) {
   const startTime = new Date();
   const cronRunId = `wind-actuals-${Date.now()}`;
+
+  // Log cron start to database
+  await logCronStart('store-wind-actuals', cronRunId);
 
   // Log cron execution start with detailed timestamp info
   console.log(`[CRON-WIND-ACTUALS] ========== CRON JOB STARTED ==========`);
@@ -49,6 +53,10 @@ export async function GET(request: NextRequest) {
 
     if (!isAuthorized) {
       console.warn(`[CRON-WIND-ACTUALS] [${cronRunId}] Unauthorized attempt`);
+      await logCronComplete(cronRunId, 'error', {
+        errorMessage: 'Unauthorized request',
+        startTime,
+      });
       return NextResponse.json(
         { error: 'Unauthorized', runId: cronRunId },
         { status: 401 }
@@ -93,6 +101,11 @@ export async function GET(request: NextRequest) {
 
     if (yesterdayMeasurements.length === 0) {
       console.warn(`[CRON] No NOAA data available for ${targetDate}`);
+      await logCronComplete(cronRunId, 'skipped', {
+        outcome: 'No NOAA data available',
+        startTime,
+        details: { targetDate },
+      });
       return NextResponse.json({
         success: false,
         message: `No NOAA data available for ${targetDate}`,
@@ -111,6 +124,11 @@ export async function GET(request: NextRequest) {
 
     if (forecastWindowData.length === 0) {
       console.warn(`[CRON] No data in forecast window (10 AM - 6 PM) for ${targetDate}`);
+      await logCronComplete(cronRunId, 'skipped', {
+        outcome: 'No data in forecast window',
+        startTime,
+        details: { targetDate, note: 'Data outside 10 AM - 6 PM window' },
+      });
       return NextResponse.json({
         success: false,
         message: `No data in forecast window for ${targetDate}`,
@@ -129,6 +147,17 @@ export async function GET(request: NextRequest) {
     console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Stored ${storedCount} hourly records for ${targetDate}`);
     console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Duration: ${durationMs}ms`);
     console.log(`[CRON-WIND-ACTUALS] [${cronRunId}] Completed at: ${formatPacificDateTime(endTime)}`);
+
+    // Log success to database
+    await logCronComplete(cronRunId, 'success', {
+      outcome: `Stored ${storedCount} hourly records`,
+      startTime,
+      details: {
+        targetDate,
+        hoursStored: storedCount,
+        hourRange: '10 AM - 6 PM PST',
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -156,6 +185,15 @@ export async function GET(request: NextRequest) {
         stack: error.stack?.split('\n').slice(0, 3)
       });
     }
+
+    // Log error to database
+    await logCronComplete(cronRunId, 'error', {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      startTime,
+      details: {
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+    });
 
     return NextResponse.json({
       success: false,

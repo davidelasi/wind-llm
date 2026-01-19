@@ -612,18 +612,27 @@ ${llmPrompt}
   // Calculate expected next NWS update time
   // NWS typically issues forecasts around 4 AM, 10 AM, 4 PM, 10 PM PST
   const getNextUpdateText = (nwsForecastTime: string): string => {
-    const nwsDate = new Date(nwsForecastTime);
     const now = new Date();
 
-    // Convert to Pacific time
-    const nwsHour = parseInt(formatInTimeZone(nwsDate, PACIFIC_TIMEZONE, 'H'));
+    // Get current hour and minute in Pacific time
     const nowHour = parseInt(formatInTimeZone(now, PACIFIC_TIMEZONE, 'H'));
+    const nowMinute = parseInt(formatInTimeZone(now, PACIFIC_TIMEZONE, 'm'));
 
     // Typical NWS issue times (approximate)
     const issueHours = [4, 10, 16, 22]; // 4 AM, 10 AM, 4 PM, 10 PM
 
-    // Find next issue time after the current NWS forecast
-    let nextIssueHour = issueHours.find(h => h > nwsHour);
+    // Find the next issue hour that's in the future
+    // If we're within 30 min after an issue hour, treat it as "any time now"
+    let nextIssueHour = issueHours.find(h => h > nowHour);
+
+    // Check if we're close to an issue time (within the hour after)
+    const justMissedIssue = issueHours.includes(nowHour) ||
+      (issueHours.includes(nowHour - 1) && nowMinute < 30);
+
+    if (justMissedIssue) {
+      return 'any time now';
+    }
+
     if (nextIssueHour === undefined) {
       nextIssueHour = issueHours[0]; // Wrap to next day's 4 AM
     }

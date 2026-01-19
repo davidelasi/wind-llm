@@ -225,15 +225,22 @@ async function withSafeDay0(data: {
 
     if (preCutoffPredictions?.[0]) {
       mergedPredictions = applyPreCutoffDay0(data.predictions, preCutoffPredictions);
-      mergedWarning = [
-        data.warning,
-        'Day 0 sourced from last pre-6 PM forecast'
-      ].filter(Boolean).join(' | ');
+      // Only add warning if config enables it
+      const modelConfig = await loadModelConfig();
+      if (modelConfig.showDay0SourceWarning) {
+        mergedWarning = [
+          data.warning,
+          'Day 0 sourced from last pre-6 PM forecast'
+        ].filter(Boolean).join(' | ');
+      }
     } else if (preCutoffForecast) {
-      mergedWarning = [
-        data.warning,
-        'Pre-6 PM forecast found but invalid shape; keeping current Day 0'
-      ].filter(Boolean).join(' | ');
+      const modelConfig = await loadModelConfig();
+      if (modelConfig.showDay0SourceWarning) {
+        mergedWarning = [
+          data.warning,
+          'Pre-6 PM forecast found but invalid shape; keeping current Day 0'
+        ].filter(Boolean).join(' | ');
+      }
     }
 
     return {

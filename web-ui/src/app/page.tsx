@@ -740,7 +740,9 @@ ${llmPrompt}
           return {
             time: format(dateTime, timeFormat),
             actualWindSpeed: point.windSpeed,
-            actualGustSpeed: point.gustSpeed
+            actualGustSpeed: point.gustSpeed,
+            actualWindDirection: point.windDirection,
+            actualWindDirectionText: point.windDirectionText
           };
         });
     } else {
@@ -760,14 +762,18 @@ ${llmPrompt}
           return {
             time: displayTime,
             actualWindSpeed: hourData.windSpeed,
-            actualGustSpeed: hourData.gustSpeed
+            actualGustSpeed: hourData.gustSpeed,
+            actualWindDirection: hourData.windDirection,
+            actualWindDirectionText: hourData.windDirectionText
           };
         }
 
         return {
           time: displayTime,
           actualWindSpeed: null,
-          actualGustSpeed: null
+          actualGustSpeed: null,
+          actualWindDirection: null,
+          actualWindDirectionText: null
         };
       });
     }
@@ -842,7 +848,12 @@ ${llmPrompt}
   // Merge forecast and actual data for the chart
   const mergedChartData = (() => {
     // Always use forecast points (8 slots) as base; attach actuals by hour label
-    const actualMap = new Map<string, { actualWindSpeed: number | null; actualGustSpeed: number | null }>();
+    const actualMap = new Map<string, {
+      actualWindSpeed: number | null;
+      actualGustSpeed: number | null;
+      actualWindDirection: number | null;
+      actualWindDirectionText: string | null;
+    }>();
 
     (actualWindForDay || []).forEach(actual => {
       // Parse hour from time string (supports h a or h:mm a)
@@ -857,7 +868,9 @@ ${llmPrompt}
       const displayLabel = format(new Date().setHours(hourNum, 0, 0, 0), 'h a');
       actualMap.set(displayLabel, {
         actualWindSpeed: actual.actualWindSpeed,
-        actualGustSpeed: actual.actualGustSpeed
+        actualGustSpeed: actual.actualGustSpeed,
+        actualWindDirection: actual.actualWindDirection ?? null,
+        actualWindDirectionText: actual.actualWindDirectionText ?? null
       });
     });
 
@@ -866,7 +879,9 @@ ${llmPrompt}
       return {
         ...forecastPoint,
         actualWindSpeed: actual?.actualWindSpeed ?? null,
-        actualGustSpeed: actual?.actualGustSpeed ?? null
+        actualGustSpeed: actual?.actualGustSpeed ?? null,
+        actualWindDirection: actual?.actualWindDirection ?? null,
+        actualWindDirectionText: actual?.actualWindDirectionText ?? null
       };
     });
   })();
@@ -1052,17 +1067,34 @@ ${llmPrompt}
           />
         )}
 
-        {/* Wind direction arrow */}
+        {/* Wind direction arrows - two rows at top */}
         {!payload.isEmpty && (
-          <g transform={`translate(${x + width/2}, ${y - 25})`}>
-            <g transform={`rotate(${payload.windDirection + 180})`}>
-              <polygon
-                points="0,-12 -6,6 0,2 6,6"
-                fill="#374151"
-                stroke="white"
-                strokeWidth="1"
-              />
+          <g>
+            {/* Forecast wind direction arrow (top row) - uses forecast bar color */}
+            <g transform={`translate(${x + width/2}, ${y - 40})`}>
+              <g transform={`rotate(${payload.windDirection + 180})`}>
+                <polygon
+                  points="0,-10 -5,5 0,1.5 5,5"
+                  fill={getForecastWindColor(payload.windSpeed)}
+                  stroke="white"
+                  strokeWidth="0.8"
+                />
+              </g>
             </g>
+
+            {/* Actual wind direction arrow (bottom row) - dark gray, only if available */}
+            {payload.actualWindDirection !== null && payload.actualWindDirection !== undefined && (
+              <g transform={`translate(${x + width/2}, ${y - 20})`}>
+                <g transform={`rotate(${payload.actualWindDirection + 180})`}>
+                  <polygon
+                    points="0,-10 -5,5 0,1.5 5,5"
+                    fill="#374151"
+                    stroke="white"
+                    strokeWidth="0.8"
+                  />
+                </g>
+              </g>
+            )}
           </g>
         )}
       </g>
@@ -1104,6 +1136,9 @@ ${llmPrompt}
               )}
               {data.actualGustSpeed !== null && (
                 <p className="text-gray-600">Gust: {data.actualGustSpeed.toFixed(1)} knots</p>
+              )}
+              {data.actualWindDirection !== null && (
+                <p className="text-gray-600">Direction: {data.actualWindDirectionText} ({data.actualWindDirection}°)</p>
               )}
             </div>
           )}
@@ -1227,7 +1262,7 @@ ${llmPrompt}
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
-                margin={{ top: 10, right: 5, left: 0, bottom: 20 }}
+                margin={{ top: 55, right: 5, left: 0, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis

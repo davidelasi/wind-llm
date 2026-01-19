@@ -8,10 +8,18 @@
  * @module cron-logging
  */
 
-import { sql } from '@vercel/postgres';
 import { shouldSkipDatabase, logDatabaseSkipped } from '@/lib/db/db-utils';
 import { formatInTimeZone } from 'date-fns-tz';
 import { parseISO } from 'date-fns';
+
+// Dynamic import to avoid errors when DATABASE_URL is not set
+async function getSql() {
+  if (shouldSkipDatabase()) {
+    return null;
+  }
+  const { sql } = await import('@vercel/postgres');
+  return sql;
+}
 
 const PACIFIC_TIMEZONE = 'America/Los_Angeles';
 
@@ -51,6 +59,9 @@ export async function initCronLogsTable(): Promise<boolean> {
     logDatabaseSkipped('initCronLogsTable');
     return false;
   }
+
+  const sql = await getSql();
+  if (!sql) return false;
 
   try {
     await sql`
@@ -101,6 +112,9 @@ export async function logCronStart(
     // Ensure table exists
     await initCronLogsTable();
 
+    const sql = await getSql();
+    if (!sql) return false;
+
     const now = new Date().toISOString();
 
     await sql`
@@ -138,6 +152,9 @@ export async function logCronComplete(
     logDatabaseSkipped('logCronComplete');
     return false;
   }
+
+  const sql = await getSql();
+  if (!sql) return false;
 
   try {
     const completedAt = new Date();
@@ -181,6 +198,9 @@ export async function getRecentCronLogs(
     logDatabaseSkipped('getRecentCronLogs');
     return [];
   }
+
+  const sql = await getSql();
+  if (!sql) return [];
 
   const { jobName, limit = 20, since } = options;
 
@@ -270,6 +290,9 @@ export async function getCronStatusSummary(): Promise<{
     logDatabaseSkipped('getCronStatusSummary');
     return null;
   }
+
+  const sql = await getSql();
+  if (!sql) return null;
 
   try {
     const oneDayAgo = new Date();

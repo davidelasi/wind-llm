@@ -11,7 +11,7 @@
   "allowOnDemandGeneration": true,
   "allowLocalLlmCalls": false,
   "skipDatabaseInDevelopment": true,
-  "useDummyForecastWhenUnavailable": false,
+  "useDummyForecastWhenUnavailable": true,
   "convertForecastDaysToRelative": false,
   "includeGeographicContext": true,
   "showDay0SourceWarning": false,

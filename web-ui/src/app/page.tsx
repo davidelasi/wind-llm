@@ -126,7 +126,8 @@ export default function Home() {
   const [lastForecastUpdate, setLastForecastUpdate] = useState<string>('');
   const [showDebug, setShowDebug] = useState(false);
   const [showForecastDebug, setShowForecastDebug] = useState(false);
-  const [selectedForecastDay, setSelectedForecastDay] = useState(0); // -3=3 days ago, -2=2 days ago, -1=Yesterday, 0=Today, 1=Tomorrow, 2=D2, 3=D3, 4=D4
+  const [selectedForecastDay, setSelectedForecastDay] = useState(0); // 0=Today, 1=Tomorrow, 2=D2, 3=D3, 4=D4
+  const [selectedHistoricalDay, setSelectedHistoricalDay] = useState(-1); // -1=Yesterday, -2=2 days ago, -3=3 days ago
   const [llmForecastData, setLlmForecastData] = useState<any[][] | null>(null);
   const [llmForecastLoading, setLlmForecastLoading] = useState(true);
 const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
@@ -228,31 +229,46 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
 
 
   // Generate dummy forecast data for localhost testing
+  // Creates 5 days with varying wind intensities to exercise the full color range
   const generateDummyForecast = () => {
     const timeLabels = ['11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
 
-    // Generate 5 days of realistic-looking forecast data
-    const dummyPredictions = [];
-    for (let day = 0; day < 5; day++) {
-      const dayData = timeLabels.map((time, hourIndex) => {
-        // Simulate typical afternoon wind build-up pattern
-        const baseWind = 8 + Math.sin((hourIndex / 7) * Math.PI) * 6 + (Math.random() * 3 - 1.5);
-        const windSpeed = Math.round(baseWind * 10) / 10;
-        const gustSpeed = Math.round((windSpeed + 3 + Math.random() * 4) * 10) / 10;
-        // Typical SW-W direction for LA area thermal winds
-        const windDirection = Math.round(220 + Math.random() * 40);
+    // Day profiles: [baseWind, peakWind, gustAdd, direction]
+    // Designed to cover sub-5kt to ~30kt range
+    const dayProfiles = [
+      // Day 0: Light wind (blue range, 3-8 kt)
+      { base: 3, peak: 8, gustAdd: 3, dirBase: 240 },
+      // Day 1: Moderate wind (green range, 8-14 kt)
+      { base: 8, peak: 14, gustAdd: 4, dirBase: 250 },
+      // Day 2: Fresh wind (yellow/orange range, 14-22 kt)
+      { base: 14, peak: 22, gustAdd: 5, dirBase: 220 },
+      // Day 3: Strong wind (red range, 20-28 kt)
+      { base: 20, peak: 28, gustAdd: 6, dirBase: 180 },
+      // Day 4: Very strong (purple range, 25-32 kt)
+      { base: 25, peak: 32, gustAdd: 5, dirBase: 90 },
+    ];
+
+    const dummyPredictions = dayProfiles.map((profile) => {
+      return timeLabels.map((time, hourIndex) => {
+        // Simulate afternoon wind build-up pattern (peaks around 3-4 PM)
+        const buildupFactor = Math.sin((hourIndex / 7) * Math.PI);
+        const windRange = profile.peak - profile.base;
+        const baseWind = profile.base + buildupFactor * windRange + (Math.random() * 2 - 1);
+        const windSpeed = Math.round(Math.max(1, baseWind) * 10) / 10;
+        const gustSpeed = Math.round((windSpeed + profile.gustAdd + Math.random() * 2) * 10) / 10;
+        // Vary direction slightly through the day
+        const windDirection = Math.round(profile.dirBase + (hourIndex - 4) * 5 + Math.random() * 10);
 
         return {
           time,
           windSpeed,
           gustSpeed,
-          windDirection,
+          windDirection: ((windDirection % 360) + 360) % 360, // Normalize to 0-360
           windDirectionText: getWindDirectionText(windDirection),
           isEmpty: false
         };
       });
-      dummyPredictions.push(dayData);
-    }
+    });
 
     return dummyPredictions;
   };
@@ -441,6 +457,20 @@ ${llmPrompt}
     fetchForecastData();
     if (appConfig.llmForecast.enabled) {
       fetchLlmForecast();
+    } else if (isLocalhost) {
+      // On localhost with llmForecast disabled, use dummy data
+      const dummyData = generateDummyForecast();
+      setLlmForecastData(dummyData);
+      setLlmForecastMeta({
+        lastUpdated: new Date().toISOString(),
+        isLLMGenerated: false,
+        source: 'dummy_localhost',
+        warning: null,
+        nwsForecastTime: new Date().toISOString(),
+        format: 'DUMMY'
+      });
+      setIsDummyForecast(true);
+      setLlmForecastLoading(false);
     }
     // Set up different refresh intervals
     const windInterval = setInterval(fetchWindData, 5 * 60 * 1000); // Refresh every 5 minutes
@@ -776,8 +806,8 @@ ${llmPrompt}
 
   const currentForecastData = getCurrentForecastData();
 
-  // Get actual wind data for the selected day (simplified approach from wind-history page)
-  const getActualWindForDay = () => {
+  // Get actual wind data for a specific day offset (simplified approach from wind-history page)
+  const getActualWindForDay = (dayOffset: number = selectedForecastDay) => {
     if (!allWindData || allWindData.length === 0) {
       return null;
     }
@@ -785,7 +815,7 @@ ${llmPrompt}
     // Calculate target date for selected day (same logic as wind-history page)
     const now = new Date();
     const nowPacific = toZonedTime(now, PACIFIC_TIMEZONE);
-    const targetPacific = addDays(nowPacific, selectedForecastDay);
+    const targetPacific = addDays(nowPacific, dayOffset);
     const dateKey = formatInTimeZone(targetPacific, PACIFIC_TIMEZONE, 'yyyy-MM-dd');
 
     // Find the day in our unified data (like findDayByDate from the hook)
@@ -823,6 +853,7 @@ ${llmPrompt}
       return standardTimeSlots.map(hour => {
         const hourData = hourMap.get(hour);
 
+        // Display at end-of-hour mark (e.g., 10:00-11:00 window shows as 11 AM)
         const displayHour = hour + 1;
         const displayTime = format(new Date().setHours(displayHour, 0, 0, 0), 'h a');
 
@@ -848,6 +879,7 @@ ${llmPrompt}
   };
 
   const actualWindForDay = getActualWindForDay();
+  const historicalWindForDay = getActualWindForDay(selectedHistoricalDay);
 
   // Get today's 6-minute granular data for Current Conditions chart
   const getTodaysGranularData = () => {
@@ -965,20 +997,32 @@ ${llmPrompt}
     return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
   };
 
-  // Get color for wind speed using smooth gradient transitions (original from Wind History)
+  // Parse hex color to RGB
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  };
+
+  // Get color for wind speed using smooth gradient transitions (from config)
   const getForecastWindColor = (windSpeed: number) => {
-    // Define color stops with RGB values
-    const colorStops = [
-      { speed: 0, r: 59, g: 130, b: 246 },   // Blue #3b82f6
-      { speed: 5, r: 16, g: 185, b: 129 },   // Green #10b981
-      { speed: 10, r: 234, g: 179, b: 8 },   // Yellow #eab308
-      { speed: 15, r: 239, g: 68, b: 68 },   // Red #ef4444
-      { speed: 20, r: 139, g: 92, b: 246 },  // Purple #8b5cf6
-      { speed: 25, r: 139, g: 92, b: 246 }   // Purple (cap)
+    const configStops = appConfig.colorSchemes?.windSpeed?.stops || [
+      { speed: 0, color: '#3b82f6' },
+      { speed: 25, color: '#8b5cf6' }
     ];
 
+    // Convert config stops to RGB
+    const colorStops = configStops.map((stop: { speed: number; color: string }) => ({
+      speed: stop.speed,
+      ...hexToRgb(stop.color)
+    }));
+
     // Clamp wind speed to our range
-    const clampedSpeed = Math.max(0, Math.min(25, windSpeed));
+    const maxSpeed = colorStops[colorStops.length - 1].speed;
+    const clampedSpeed = Math.max(0, Math.min(maxSpeed, windSpeed));
 
     // Find the two color stops to interpolate between
     let lowerStop = colorStops[0];
@@ -1044,37 +1088,36 @@ ${llmPrompt}
     return ticks;
   };
 
-  // Custom legend renderer with different icon shapes per series
-  const renderCustomLegend = (props: any) => {
-    const { payload } = props;
-    if (!payload) return null;
-
+  // Custom legend renderer - simplified with just Avg Wind, Gust, Direction
+  const renderCustomLegend = () => {
     return (
-      <div className="flex justify-center items-center gap-4 text-xs">
-        {payload.map((entry: any, index: number) => {
-          const { dataKey, value, color } = entry;
-
-          // Determine icon based on series type
-          const isForecast = value === 'Forecast (bars)';
-          const iconColor = isForecast ? '#9ca3af' : color; // Gray for forecast, original color for actual
-
-          return (
-            <div key={`legend-${index}`} className="flex items-center gap-1">
-              {isForecast ? (
-                // Square for forecast
-                <svg width="14" height="14">
-                  <rect x="0" y="0" width="14" height="14" fill={iconColor} />
-                </svg>
-              ) : (
-                // Circle for actual wind data
-                <svg width="14" height="14">
-                  <circle cx="7" cy="7" r="6" fill={iconColor} />
-                </svg>
-              )}
-              <span style={{ color: '#374151' }}>{value}</span>
-            </div>
-          );
-        })}
+      <div className="flex flex-wrap justify-center items-center gap-3 text-xs">
+        {/* Avg Wind */}
+        <div className="flex items-center gap-1">
+          <svg width="14" height="14">
+            <circle cx="7" cy="7" r="6" fill="#374151" />
+          </svg>
+          <span style={{ color: '#374151' }}>Avg Wind</span>
+        </div>
+        {/* Gust */}
+        <div className="flex items-center gap-1">
+          <svg width="14" height="14">
+            <circle cx="7" cy="7" r="6" fill="#6b7280" />
+          </svg>
+          <span style={{ color: '#374151' }}>Gust</span>
+        </div>
+        {/* Direction */}
+        <div className="flex items-center gap-1">
+          <svg width="18" height="18" viewBox="-10 -12 20 20">
+            <polygon
+              points="0,-10 -5,5 0,1.5 5,5"
+              fill="#1f2937"
+              stroke="white"
+              strokeWidth="0.8"
+            />
+          </svg>
+          <span style={{ color: '#374151' }}>Direction</span>
+        </div>
       </div>
     );
   };
@@ -1112,57 +1155,58 @@ ${llmPrompt}
       return null;
     }
 
+    // Use average of wind speed and gust speed for color
+    const avgSpeed = (payload.windSpeed + payload.gustSpeed) / 2;
+    const barColor = getForecastWindColor(avgSpeed);
+
     return (
       <g>
-        {/* Wind speed bar - color based on wind speed */}
+        {/* Wind speed bar - color based on average of wind and gust */}
         <rect
           x={x}
           y={y + gustHeight}
           width={width}
           height={windHeight}
-          fill={getForecastWindColor(payload.windSpeed)}
+          fill={barColor}
         />
 
-        {/* Additional gust - darker shade of the same color */}
+        {/* Additional gust - same color with lighter opacity */}
         {gustHeight > 0 && (
           <rect
             x={x}
             y={y}
             width={width}
             height={gustHeight}
-            fill={getForecastWindColor(payload.windSpeed)}
-            fillOpacity="0.7"
+            fill={barColor}
+            fillOpacity="0.5"
           />
         )}
 
-        {/* Wind direction arrows - two rows at top */}
-        {!payload.isEmpty && (
-          <g>
-            {/* Forecast wind direction arrow (top row) - uses forecast bar color */}
-            <g transform={`translate(${x + width/2}, ${y - 40})`}>
-              <g transform={`rotate(${payload.windDirection + 180})`}>
-                <polygon
-                  points="0,-10 -5,5 0,1.5 5,5"
-                  fill={getForecastWindColor(payload.windSpeed)}
-                  stroke="white"
-                  strokeWidth="0.8"
-                />
-              </g>
+        {/* Forecast wind direction arrow - colored, closer to bar */}
+        {!payload.isEmpty && payload.windDirection != null && (
+          <g transform={`translate(${x + width/2}, ${y - 15})`}>
+            <g transform={`rotate(${payload.windDirection + 180})`}>
+              <polygon
+                points="0,-10 -5,5 0,1.5 5,5"
+                fill={barColor}
+                stroke="white"
+                strokeWidth="0.8"
+              />
             </g>
+          </g>
+        )}
 
-            {/* Actual wind direction arrow (bottom row) - dark gray, only if available */}
-            {payload.actualWindDirection !== null && payload.actualWindDirection !== undefined && (
-              <g transform={`translate(${x + width/2}, ${y - 20})`}>
-                <g transform={`rotate(${payload.actualWindDirection + 180})`}>
-                  <polygon
-                    points="0,-10 -5,5 0,1.5 5,5"
-                    fill="#374151"
-                    stroke="white"
-                    strokeWidth="0.8"
-                  />
-                </g>
-              </g>
-            )}
+        {/* Actual wind direction arrow - black, above forecast arrow */}
+        {!payload.isEmpty && payload.actualWindDirection != null && (
+          <g transform={`translate(${x + width/2}, ${y - 35})`}>
+            <g transform={`rotate(${payload.actualWindDirection + 180})`}>
+              <polygon
+                points="0,-10 -5,5 0,1.5 5,5"
+                fill="#1f2937"
+                stroke="white"
+                strokeWidth="0.8"
+              />
+            </g>
           </g>
         )}
       </g>
@@ -1230,7 +1274,7 @@ ${llmPrompt}
           {/* Title */}
           <div className="text-center mb-4">
             <h1 className="text-xl font-semibold text-gray-800">
-              Cabrillo Wind Forecast (knots)
+              Cabrillo Wind Forecast
             </h1>
           </div>
 
@@ -1247,13 +1291,13 @@ ${llmPrompt}
           <div className="flex items-center justify-center gap-2 md:gap-3 mb-4">
             {/* Left Arrow */}
             <button
-              onClick={() => setSelectedForecastDay(Math.max(-3, selectedForecastDay - 1))}
-              disabled={selectedForecastDay <= -3}
+              onClick={() => setSelectedForecastDay(Math.max(0, selectedForecastDay - 1))}
+              disabled={selectedForecastDay <= 0}
               className={`
                 flex items-center justify-center
                 min-w-[44px] min-h-[44px] md:min-w-[48px] md:min-h-[48px]
                 rounded-lg transition-all
-                ${selectedForecastDay <= -3
+                ${selectedForecastDay <= 0
                   ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
                   : 'bg-[#005F73] text-white hover:bg-[#0A9396] active:bg-[#005F73] shadow-sm'
                 }
@@ -1292,54 +1336,72 @@ ${llmPrompt}
             </button>
           </div>
 
-          {/* Forecast Generation Info */}
-          {llmForecastMeta && (
-            <>
-              <div className="mb-3 mx-2 text-sm text-gray-700">
-                <p>
+          {/* Combined Info Box - Forecast info + Station note */}
+          <div className="mb-4 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {llmForecastMeta && (
+                <>
                   Wind forecast generated {getForecastGenerationTime(llmForecastMeta.lastUpdated)} at{' '}
                   <b>{new Date(llmForecastMeta.lastUpdated).toLocaleString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
                     timeZone: 'America/Los_Angeles'
-                  })}</b>, based on NWS&apos;s Inner Waters Forecast issued {getNwsIssuedRelativeTime(llmForecastMeta.nwsForecastTime)} at{' '}
-                  <b>{new Date(llmForecastMeta.nwsForecastTime).toLocaleString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: 'America/Los_Angeles'
-                  })}</b>. Next update {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.
-                </p>
-              </div>
-
-              {/* Yellow Warning Box - Combined Forecast + NWS Warnings */}
-              {(llmForecastMeta.warning || (forecastData?.warnings && forecastData.warnings.length > 0)) && (
-                <div className="mb-4 mx-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                  <div className="flex items-start space-x-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-yellow-800">
-                      {llmForecastMeta.warning && (
-                        <p className="font-medium mb-1">{llmForecastMeta.warning.replace(/^⚠️\s*/, '')}</p>
-                      )}
-                      {forecastData?.warnings && forecastData.warnings.length > 0 && (
-                        <ul className="list-disc list-inside space-y-1">
-                          {forecastData.warnings.map((warning, index) => (
-                            <li key={index}>{warning.replace(/^⚠️\s*/, '')}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  })}</b>. Next update {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.{' '}
+                </>
               )}
-            </>
+              On a typical day, actual wind at Cabrillo is a few knots stronger than predicted here.
+            </p>
+          </div>
+
+          {/* Yellow Warning Box - Combined Forecast + NWS Warnings */}
+          {llmForecastMeta && (llmForecastMeta.warning || (forecastData?.warnings && forecastData.warnings.length > 0)) && (
+            <div className="mb-4 mx-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  {llmForecastMeta.warning && (
+                    <p className="font-medium mb-1">{llmForecastMeta.warning.replace(/^⚠️\s*/, '')}</p>
+                  )}
+                  {forecastData?.warnings && forecastData.warnings.length > 0 && (
+                    <ul className="list-disc list-inside space-y-1">
+                      {forecastData.warnings.map((warning, index) => (
+                        <li key={index}>{warning.replace(/^⚠️\s*/, '')}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
 
-          <div className="h-80 w-full">
+          {(() => {
+            // Scale y-axis based on this chart's data, with 25kt minimum max
+            const forecastMaxWind = Math.max(
+              ...mergedChartData.map((d: any) => d.windSpeed || 0),
+              ...mergedChartData.map((d: any) => d.gustSpeed || 0),
+              ...mergedChartData.map((d: any) => d.actualWindSpeed || 0),
+              ...mergedChartData.map((d: any) => d.actualGustSpeed || 0)
+            );
+            const forecastYAxisMax = Math.max(
+              25, // Minimum max of 25kt
+              Math.ceil(forecastMaxWind / 5) * 5
+            );
+            const forecastYAxisTicks = [];
+            for (let i = 0; i <= forecastYAxisMax; i += 5) {
+              forecastYAxisTicks.push(i);
+            }
+
+            return (
+          <div className="h-80 w-full relative">
+            {/* Wind in knots label overlay */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-gray-200/70 px-2 py-0.5 rounded text-xs text-gray-600">
+              Wind in knots
+            </div>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={mergedChartData}
-                margin={{ top: 55, right: 5, left: 0, bottom: 20 }}
+                margin={{ top: 25, right: 5, left: 0, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
@@ -1352,8 +1414,8 @@ ${llmPrompt}
                 />
                 <YAxis
                   width={35}
-                  domain={[0, getGlobalMaxWind()]}
-                  ticks={getYAxisTicks()}
+                  domain={[0, forecastYAxisMax]}
+                  ticks={forecastYAxisTicks}
                   tick={{ fontSize: 12, fill: '#374151' }}
                   axisLine={{ stroke: '#9ca3af' }}
                   tickLine={{ stroke: '#9ca3af' }}
@@ -1395,23 +1457,19 @@ ${llmPrompt}
               </ComposedChart>
             </ResponsiveContainer>
           </div>
+            );
+          })()}
 
-          {/* ========== NOTES SECTION ========== */}
-          <div className="mt-6 mx-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-gray-700 leading-relaxed">
-              This forecast is based on data from NOAA&apos;s weather station AGXC1 located at Angels Gate, ~2 miles downwind of the spot. The wind at Cabrillo is typically ~3 knots stronger.
-            </p>
-          </div>
 
           {/* ========== CURRENT CONDITIONS CHART ========== */}
           {todaysGranularData && todaysGranularData.length > 0 && (() => {
-            // Use global max wind scale to match forecast chart, but allow scaling up if today's data exceeds it
+            // Scale y-axis based on this chart's data, with 25kt minimum max
             const todaysMaxWindSpeed = Math.max(
               ...todaysGranularData.map(d => d.windSpeed || 0),
               ...todaysGranularData.map(d => d.gustSpeed || 0)
             );
             const yAxisMax = Math.max(
-              getGlobalMaxWind(),
+              25, // Minimum max of 25kt
               Math.ceil(todaysMaxWindSpeed / 5) * 5
             );
             const yAxisTicks = [];
@@ -1433,11 +1491,15 @@ ${llmPrompt}
               <div className="mt-6">
                 <div className="mb-4 mx-2">
                   <h2 className="text-xl font-semibold text-gray-800 text-center">
-                    Today's Wind (knots)
+                    Today's Wind
                   </h2>
                 </div>
 
-                <div className="h-80 w-full">
+                <div className="h-80 w-full relative">
+                  {/* Wind in knots label overlay */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 bg-gray-200/70 px-2 py-0.5 rounded text-xs text-gray-600">
+                    Wind in knots
+                  </div>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                       data={todaysGranularData}
@@ -1478,6 +1540,32 @@ ${llmPrompt}
                       />
                       <Legend
                         wrapperStyle={{ fontSize: '12px' }}
+                        content={() => (
+                          <div className="flex justify-center gap-4 mt-2">
+                            {/* Avg Wind */}
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#10b981' }} />
+                              <span className="text-xs text-gray-600">Avg Wind</span>
+                            </div>
+                            {/* Gust */}
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#dc2626' }} />
+                              <span className="text-xs text-gray-600">Gust</span>
+                            </div>
+                            {/* Direction */}
+                            <div className="flex items-center gap-1.5">
+                              <svg width="18" height="18" viewBox="-10 -12 20 20">
+                                <polygon
+                                  points="0,-10 -5,5 0,1.5 5,5"
+                                  fill="#1f2937"
+                                  stroke="white"
+                                  strokeWidth="0.8"
+                                />
+                              </svg>
+                              <span className="text-xs text-gray-600">Direction</span>
+                            </div>
+                          </div>
+                        )}
                       />
 
                       {/* Hourly grid lines for unlabeled hours */}
@@ -1501,11 +1589,17 @@ ${llmPrompt}
                         stroke="#10b981"
                         strokeWidth={2}
                         dot={(props: any) => {
+                          const { cx, cy, index, payload } = props;
+                          const elements = [];
+
                           // Show dot only for the most recent data point
-                          if (props.index === mostRecentIndex) {
-                            return <circle cx={props.cx} cy={props.cy} r={5} fill="#10b981" stroke="#fff" strokeWidth={2} />;
+                          if (index === mostRecentIndex) {
+                            elements.push(
+                              <circle key="dot" cx={cx} cy={cy} r={5} fill="#10b981" stroke="#fff" strokeWidth={2} />
+                            );
                           }
-                          return null;
+
+                          return elements.length > 0 ? <g>{elements}</g> : null;
                         }}
                         connectNulls={false}
                         name="Actual Wind"
@@ -1516,11 +1610,245 @@ ${llmPrompt}
                         stroke="#dc2626"
                         strokeWidth={2}
                         dot={(props: any) => {
+                          const { cx, cy, index, payload } = props;
+                          const elements = [];
+
                           // Show dot only for the most recent data point
-                          if (props.index === mostRecentIndex) {
-                            return <circle cx={props.cx} cy={props.cy} r={5} fill="#dc2626" stroke="#fff" strokeWidth={2} />;
+                          if (index === mostRecentIndex) {
+                            elements.push(
+                              <circle key="dot" cx={cx} cy={cy} r={5} fill="#dc2626" stroke="#fff" strokeWidth={2} />
+                            );
                           }
-                          return null;
+
+                          // Show wind direction arrow every 10th point (positioned above gust line)
+                          if (index % 10 === 0 && payload.windDirection != null && payload.gustSpeed != null && cy != null) {
+                            elements.push(
+                              <g key="arrow" transform={`translate(${cx}, ${cy - 20})`}>
+                                <g transform={`rotate(${payload.windDirection + 180})`}>
+                                  <polygon
+                                    points="0,-10 -5,5 0,1.5 5,5"
+                                    fill="#1f2937"
+                                    stroke="white"
+                                    strokeWidth="0.8"
+                                  />
+                                </g>
+                              </g>
+                            );
+                          }
+
+                          return elements.length > 0 ? <g>{elements}</g> : null;
+                        }}
+                        connectNulls={false}
+                        name="Actual Gusts"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ========== PREVIOUS DAYS CHART ========== */}
+          {historicalWindForDay && historicalWindForDay.length > 0 && (() => {
+            // Scale y-axis based on this chart's data, with 25kt minimum max
+            const historicalMaxWind = Math.max(
+              ...historicalWindForDay.map((d: any) => d.actualWindSpeed || 0),
+              ...historicalWindForDay.map((d: any) => d.actualGustSpeed || 0)
+            );
+            const yAxisMax = Math.max(
+              25, // Minimum max of 25kt
+              Math.ceil(historicalMaxWind / 5) * 5
+            );
+            const yAxisTicks = [];
+            for (let i = 0; i <= yAxisMax; i += 5) {
+              yAxisTicks.push(i);
+            }
+
+            // Add dummy bar height to create same x-axis padding as forecast chart
+            const dataWithDummyBars = historicalWindForDay.map((d: any) => ({
+              ...d,
+              dummyBar: 0.5 // Tiny invisible bar for x-axis spacing
+            }));
+
+            return (
+              <div className="mt-6">
+                <div className="mb-4 mx-2">
+                  <h2 className="text-xl font-semibold text-gray-800 text-center">
+                    Previous Days' Wind
+                  </h2>
+                </div>
+
+                {/* Day Navigation for Historical Days */}
+                <div className="flex items-center justify-center gap-2 md:gap-3 mb-4">
+                  {/* Left Arrow */}
+                  <button
+                    onClick={() => setSelectedHistoricalDay(Math.max(-3, selectedHistoricalDay - 1))}
+                    disabled={selectedHistoricalDay <= -3}
+                    className={`
+                      flex items-center justify-center
+                      min-w-[44px] min-h-[44px] md:min-w-[48px] md:min-h-[48px]
+                      rounded-lg transition-all
+                      ${selectedHistoricalDay <= -3
+                        ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                        : 'bg-[#005F73] text-white hover:bg-[#0A9396] active:bg-[#005F73] shadow-sm'
+                      }
+                    `}
+                    aria-label="Previous day"
+                  >
+                    <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+                  </button>
+
+                  {/* Day Label */}
+                  <div className="flex flex-col items-center min-w-[120px] md:min-w-[160px] text-center">
+                    <div className="text-base md:text-lg font-semibold text-gray-900">
+                      {getDayLabel(selectedHistoricalDay)}
+                    </div>
+                    <div className="text-xs md:text-sm text-gray-600">
+                      {getDateLabel(selectedHistoricalDay)}
+                    </div>
+                  </div>
+
+                  {/* Right Arrow */}
+                  <button
+                    onClick={() => setSelectedHistoricalDay(Math.min(-1, selectedHistoricalDay + 1))}
+                    disabled={selectedHistoricalDay >= -1}
+                    className={`
+                      flex items-center justify-center
+                      min-w-[44px] min-h-[44px] md:min-w-[48px] md:min-h-[48px]
+                      rounded-lg transition-all
+                      ${selectedHistoricalDay >= -1
+                        ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                        : 'bg-[#005F73] text-white hover:bg-[#0A9396] active:bg-[#005F73] shadow-sm'
+                      }
+                    `}
+                    aria-label="Next day"
+                  >
+                    <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+                  </button>
+                </div>
+
+                <div className="h-80 w-full relative">
+                  {/* Wind in knots label overlay */}
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-gray-200/70 px-2 py-0.5 rounded text-xs text-gray-600">
+                    Wind in knots
+                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart
+                      data={dataWithDummyBars}
+                      margin={{ top: 25, right: 5, left: 0, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="time"
+                        type="category"
+                        tick={{ fontSize: 12, fill: '#374151', textAnchor: 'middle' }}
+                        axisLine={{ stroke: '#9ca3af' }}
+                        tickLine={{ stroke: '#9ca3af' }}
+                        interval={0}
+                      />
+                      <YAxis
+                        width={35}
+                        domain={[0, yAxisMax]}
+                        ticks={yAxisTicks}
+                        tick={{ fontSize: 12, fill: '#374151' }}
+                        axisLine={{ stroke: '#9ca3af' }}
+                        tickLine={{ stroke: '#9ca3af' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: any, name: string | undefined) => {
+                          if (value === null) return ['--', name ?? ''];
+                          return [`${value} kt`, name ?? ''];
+                        }}
+                        cursor={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '12px' }}
+                        content={() => (
+                          <div className="flex justify-center gap-4 mt-2">
+                            {/* Avg Wind */}
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#374151' }} />
+                              <span className="text-xs text-gray-600">Avg Wind</span>
+                            </div>
+                            {/* Gust */}
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#6b7280' }} />
+                              <span className="text-xs text-gray-600">Gust</span>
+                            </div>
+                            {/* Direction */}
+                            <div className="flex items-center gap-1.5">
+                              <svg width="18" height="18" viewBox="-10 -12 20 20">
+                                <polygon
+                                  points="0,-10 -5,5 0,1.5 5,5"
+                                  fill="#1f2937"
+                                  stroke="white"
+                                  strokeWidth="0.8"
+                                />
+                              </svg>
+                              <span className="text-xs text-gray-600">Direction</span>
+                            </div>
+                          </div>
+                        )}
+                      />
+                      <ReferenceLine y={10} stroke="#9ca3af" strokeDasharray="3 3" />
+
+                      {/* Invisible dummy bar to create same x-axis padding as forecast chart */}
+                      <Bar
+                        dataKey="dummyBar"
+                        fill="transparent"
+                        barSize={40}
+                      />
+
+                      <Line
+                        type="monotone"
+                        dataKey="actualWindSpeed"
+                        stroke="#374151"
+                        strokeWidth={2}
+                        dot={(props: any) => {
+                          const { cx, cy, payload } = props;
+                          // Standard dot only
+                          return <circle cx={cx} cy={cy} r={4} fill="#374151" />;
+                        }}
+                        connectNulls={false}
+                        name="Actual Wind"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="actualGustSpeed"
+                        stroke="#6b7280"
+                        strokeWidth={2}
+                        dot={(props: any) => {
+                          const { cx, cy, payload } = props;
+                          const elements = [];
+
+                          // Standard dot
+                          elements.push(
+                            <circle key="dot" cx={cx} cy={cy} r={4} fill="#6b7280" />
+                          );
+
+                          // Wind direction arrow (positioned above gust line)
+                          if (payload.actualWindDirection != null && payload.actualGustSpeed != null && cy != null) {
+                            elements.push(
+                              <g key="arrow" transform={`translate(${cx}, ${cy - 20})`}>
+                                <g transform={`rotate(${payload.actualWindDirection + 180})`}>
+                                  <polygon
+                                    points="0,-10 -5,5 0,1.5 5,5"
+                                    fill="#1f2937"
+                                    stroke="white"
+                                    strokeWidth="0.8"
+                                  />
+                                </g>
+                              </g>
+                            );
+                          }
+
+                          return <g>{elements}</g>;
                         }}
                         connectNulls={false}
                         name="Actual Gusts"

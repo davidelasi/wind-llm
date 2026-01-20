@@ -13,7 +13,21 @@
     "description": "Controls debug and technical information visibility. showDebugSection: Show Debug & Technical Information section on home page. Set to false in production to hide debug features."
   },
   "llmForecast": {
-    "enabled": true,
+    "enabled": false,
     "description": "Enable LLM forecast fetching. Set to false in local development when allowLocalLlmCalls is disabled and no database is configured."
+  },
+  "colorSchemes": {
+    "description": "Color schemes for forecast visualization",
+    "windSpeed": {
+      "description": "Color gradient for wind speed bars. Each stop has speed (knots) and color (hex).",
+      "stops": [
+        { "speed": 0, "color": "#3b82f6" },
+        { "speed": 10, "color": "#10b981" },
+        { "speed": 15, "color": "#eab308" },
+        { "speed": 20, "color": "#ef4444" },
+        { "speed": 25, "color": "#8b5cf6" },
+        { "speed": 30, "color": "#8b5cf6" }
+      ]
+    }
   }
 }

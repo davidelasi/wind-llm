@@ -69,7 +69,7 @@ const CompactWindDisplay = ({ windData, isMobile = false }: { windData: NavWindD
 
       {/* Age info below */}
       <div className="text-xs text-gray-500">
-        {windData.ageMinutes !== undefined && `${windData.ageMinutes} min ago`}
+        {windData.ageMinutes !== undefined && `Angels Gate; ${windData.ageMinutes} min ago`}
       </div>
     </div>
   );

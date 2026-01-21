@@ -43,8 +43,7 @@ export default function HowItWorks() {
               />
               <p className="mt-2 text-xs text-gray-500 text-center">
                 Source: Openseamap.org. The red line connects the location of the spot (left) with the location of the AGXC1 wind sensor (right).
-                The dominant direction of the wind is also along the red line, such that the wind station is about 2 miles downwind of the spot.
-                Use this only as a decision aid, keep official NWS advisories in view, and trust your own judgment when you're at the beach. The wind always has the final say.
+                The dominant direction of the wind is also along the red line, such that the wind station is downwind of the spot.
               </p>
             </div>
 

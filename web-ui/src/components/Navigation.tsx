@@ -185,7 +185,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
   return (
     <>
       {/* Mobile Navigation */}
-      <div className={`2xl:hidden ${className}`}>
+      <div className={`2xl:hidden sticky top-0 z-40 ${className}`}>
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -247,7 +247,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
       </div>
 
       {/* Desktop Navigation */}
-      <div className={`hidden 2xl:block ${className}`}>
+      <div className={`hidden 2xl:block sticky top-0 z-40 ${className}`}>
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">

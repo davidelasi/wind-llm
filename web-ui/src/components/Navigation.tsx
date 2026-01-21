@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wind, BarChart3, Home, Menu, X, Eye, HelpCircle, User, ListTodo, Info } from 'lucide-react';
+import { BarChart3, Home, Menu, X, Eye, HelpCircle, User, Info } from 'lucide-react';
 import { useState } from 'react';
 import appConfig from '@/config/app-config.json';
 import { useWindData } from '@/hooks/useWindData';
@@ -125,6 +125,14 @@ export default function Navigation({ className = '' }: NavigationProps) {
 
   const windData = getLatestWindReading();
 
+  // Check if we're on localhost
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+  // Determine if statistics should be visible
+  const showStatistics = (appConfig as any).statistics?.enabled ||
+    ((appConfig as any).statistics?.showOnLocalhost && isLocalhost);
+
   const allNavigation = [
     {
       name: 'Home',
@@ -142,7 +150,8 @@ export default function Navigation({ className = '' }: NavigationProps) {
       name: 'Statistics',
       href: '/statistics',
       icon: BarChart3,
-      description: 'Forecast accuracy & performance'
+      description: 'Forecast accuracy & performance',
+      hidden: !showStatistics
     },
     {
       name: 'How It Works',
@@ -160,11 +169,11 @@ export default function Navigation({ className = '' }: NavigationProps) {
       name: 'About',
       href: '/about',
       icon: User,
-      description: 'About the creator'
+      description: 'About this project'
     }
   ];
 
-  const navigation = allNavigation;
+  const navigation = allNavigation.filter(item => !(item as any).hidden);
 
   const isActive = (href: string) => {
     if (href === '/') {
@@ -182,7 +191,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
             <div className="flex justify-between items-center h-16">
               {/* Logo/Brand - hide text on mobile to give space to wind display */}
               <Link href="/" className="flex items-center space-x-2 flex-shrink-0">
-                <Wind className="h-8 w-8 text-[#005F73]" />
+                <img src="/images/logo.png" alt="Wind-LA Logo" className="h-10 w-10 rounded-lg" />
                 <span className="text-xl font-bold text-gray-900 hidden sm:inline">Wind-LA</span>
               </Link>
 
@@ -244,7 +253,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
             <div className="flex justify-between items-center h-16">
               {/* Logo/Brand */}
               <Link href="/" className="flex items-center space-x-2">
-                <Wind className="h-8 w-8 text-[#005F73]" />
+                <img src="/images/logo.png" alt="Wind-LA Logo" className="h-10 w-10 rounded-lg" />
                 <span className="text-xl font-bold text-gray-900">Wind-LA</span>
               </Link>
 

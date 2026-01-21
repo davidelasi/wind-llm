@@ -23,6 +23,7 @@ import {
 } from 'recharts';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, AlertTriangle, Copy, Check } from 'lucide-react';
 import appConfig from '@/config/app-config.json';
+import ForecastLoadingOverlay from '@/components/ForecastLoadingOverlay';
 
 interface WindData {
   datetime: string;
@@ -130,6 +131,7 @@ export default function Home() {
   const [selectedHistoricalDay, setSelectedHistoricalDay] = useState(-1); // -1=Yesterday, -2=2 days ago, -3=3 days ago
   const [llmForecastData, setLlmForecastData] = useState<any[][] | null>(null);
   const [llmForecastLoading, setLlmForecastLoading] = useState(true);
+const [generatingFreshForecast, setGeneratingFreshForecast] = useState(false);
 const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
 const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
 const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
@@ -278,8 +280,33 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   const fetchLlmForecast = async (forceUpdate = false) => {
+    // If we already have data, show overlay while generating fresh forecast
+    const hasCachedData = llmForecastData !== null;
+
+    // On localhost, always show the overlay animation (even on initial load)
+    // Set placeholder data first so the chart renders behind the overlay
+    if (isLocalhost && !hasCachedData) {
+      const placeholderData = generateDummyForecast();
+      setLlmForecastData(placeholderData);
+      setLlmForecastMeta({
+        lastUpdated: new Date().toISOString(),
+        isLLMGenerated: false,
+        source: 'loading_placeholder',
+        warning: null,
+        nwsForecastTime: new Date().toISOString(),
+        format: 'LOADING'
+      });
+      setLlmForecastLoading(false);
+    }
+
     try {
-      setLlmForecastLoading(true);
+      // On localhost or with cached data, show overlay animation
+      if (isLocalhost || hasCachedData) {
+        setGeneratingFreshForecast(true);
+      } else {
+        // No cached data and not localhost, show loading state
+        setLlmForecastLoading(true);
+      }
       setIsDummyForecast(false);
       const params = new URLSearchParams();
       if (forceUpdate) params.set('force', 'true');
@@ -309,6 +336,10 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
       } else {
         // On localhost, use dummy forecast data instead of showing error
         if (isLocalhost) {
+          // Add configurable delay for localhost testing
+          const dummyDelay = (appConfig as any).loadingAnimation?.dummyDelayMs ?? 5000;
+          await new Promise(resolve => setTimeout(resolve, dummyDelay));
+
           const dummyData = generateDummyForecast();
           setLlmForecastData(dummyData);
           setLlmForecastMeta({
@@ -331,6 +362,10 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
     } catch (err) {
       // On localhost, use dummy forecast data instead of showing error
       if (isLocalhost) {
+        // Add configurable delay for localhost testing
+        const dummyDelay = (appConfig as any).loadingAnimation?.dummyDelayMs ?? 5000;
+        await new Promise(resolve => setTimeout(resolve, dummyDelay));
+
         const dummyData = generateDummyForecast();
         setLlmForecastData(dummyData);
         setLlmForecastMeta({
@@ -351,6 +386,7 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
       }
     } finally {
       setLlmForecastLoading(false);
+      setGeneratingFreshForecast(false);
     }
   };
 
@@ -1349,7 +1385,7 @@ ${llmPrompt}
                   })}</b>. Next update {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.{' '}
                 </>
               )}
-              On a typical day, actual wind at Cabrillo is a few knots stronger than predicted here.
+              The wind at the spot is typically a few knots stronger than predicted; see <a href="/how-it-works"> how it works</a>.
             </p>
           </div>
 
@@ -1394,6 +1430,9 @@ ${llmPrompt}
 
             return (
           <div className="h-80 w-full relative">
+            {/* Loading overlay for fresh forecast generation */}
+            <ForecastLoadingOverlay isVisible={generatingFreshForecast} />
+
             {/* Wind in knots label overlay */}
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-gray-200/70 px-2 py-0.5 rounded text-xs text-gray-600">
               Wind in knots
@@ -1865,7 +1904,7 @@ ${llmPrompt}
         {/* ========================================
             CONSOLIDATED DEBUG SECTION
             ======================================== */}
-        {appConfig.debug.showDebugSection && (
+        {appConfig.debug.showDebugSection && (isLocalhost || (appConfig.debug as any).showDebugSectionProduction) && (
         <div className={`mt-8 bg-white rounded-lg shadow-lg overflow-hidden border-l-4 ${
           (llmForecastError || windDataError || forecastError) ? 'border-red-500' : 'border-gray-300'
         }`}>

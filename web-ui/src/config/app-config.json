@@ -10,11 +10,22 @@
   },
   "debug": {
     "showDebugSection": true,
-    "description": "Controls debug and technical information visibility. showDebugSection: Show Debug & Technical Information section on home page. Set to false in production to hide debug features."
+    "showDebugSectionProduction": true,
+    "description": "Controls debug and technical information visibility. showDebugSection: Show Debug section on home page. showDebugSectionProduction: When false, hides debug section in production even if showDebugSection is true. Set to false for official launch."
+  },
+  "statistics": {
+    "enabled": false,
+    "showOnLocalhost": true,
+    "description": "Controls Statistics page visibility. enabled: Show in production. showOnLocalhost: Always show on localhost for development. Set enabled=true when ready to launch statistics feature."
   },
   "llmForecast": {
     "enabled": true,
     "description": "Enable LLM forecast fetching. Set to false in local development when allowLocalLlmCalls is disabled and no database is configured."
+  },
+  "loadingAnimation": {
+    "enabled": true,
+    "dummyDelayMs": 5000,
+    "description": "Loading animation configuration. dummyDelayMs: Delay in milliseconds for localhost testing with dummy forecast (default 5000ms)."
   },
   "colorSchemes": {
     "description": "Color schemes for forecast visualization",

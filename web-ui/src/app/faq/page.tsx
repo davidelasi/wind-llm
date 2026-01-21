@@ -15,42 +15,21 @@ export default function FAQ() {
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">How accurate are the predictions?</h2>
               <p className="text-gray-700 leading-relaxed">
-                Unlike most other wind apps, I publish the accuracy of this forecast. Check the <a href="/statistics" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">Statistics</a> page for detailed performance metrics. Keep in mind that the forecast and real-time wind data are based on a sensor located about a mile downwind of the spot. The wind there is typically about <strong>3 knots lower</strong> than the wind at Cabrillo Beach. So the forecast generally underestimates the conditions at the launch. Adjust your expectations accordingly.
+                Unlike most other wind apps, I intend to publish detailed quantitative information on the accuracy of this forecast. This section of the site is not ready yet, but it's what I am actively working on these days.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Do you have plans to cover other spots besides Cabrillo?</h2>
               <p className="text-gray-700 leading-relaxed">
-                I would love to cover Belmont Shore! However, I could not find a public dataset of historic wind data from a sensor sufficiently close to the kitesurfing and wingfoiling spot at Belmont. If such a dataset becomes available, I would definitely add Belmont, which is my favorite kitefoiling spot. The system needs years of historical data paired with NWS forecasts to learn the local patterns, so finding the right data source is key.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">How often are forecasts updated?</h2>
-              <p className="text-gray-700 leading-relaxed">
-                Forecasts are updated automatically when the National Weather Service issues new coastal forecasts, typically <strong>three times daily</strong>. The system uses intelligent caching to detect when the NWS forecast has changed and regenerates predictions accordingly. This keeps costs under control while ensuring you always get the latest outlook.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">What time range do the forecasts cover?</h2>
-              <p className="text-gray-700 leading-relaxed">
-                Forecasts focus on the peak wind hours for ocean sports: <strong>11 AM to 6 PM Pacific Time</strong>. This is when thermal winds typically develop and are most relevant for sailing, windsurfing, kiteboarding, and wingfoiling. The forecast extends out <strong>five days</strong> (today through D+4).
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">Why do gusts matter more than average wind?</h2>
-              <p className="text-gray-700 leading-relaxed">
-                Gusts are the peaks you actually feel on the water. A forecast showing "average wind 15 kt, gusts 22 kt" means you'll experience those 22 kt spikes, which determine whether you need to depower, what size wing or kite to fly, and how safe conditions are. That's why Wind-LA treats gusts as <strong>hourly maximums</strong> rather than averages. Safety and gear selection depend on the peaks, not the averages.
+                I would love to cover Belmont Shore! However, I could not find a public dataset of historic wind data from a sensor sufficiently close to the kitesurfing and wingfoiling spot at Belmont. If such a dataset becomes available, I would definitely add Belmont, which is my favorite kitefoiling spot.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-800 mb-2">Can I trust this for safety decisions?</h2>
               <p className="text-gray-700 leading-relaxed">
-                Wind-LA is a decision aid, not a replacement for official advisories. Always check the <a href="https://www.weather.gov/lox/" target="_blank" rel="noopener noreferrer" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">National Weather Service</a> for warnings and advisories. No forecast is perfect—use this alongside other sources, your own observations, and your judgment. When in doubt, stay on the beach.
+                Short answer: <strong>NO!</strong> Wind-LA is a decision aid, not a replacement for official advisories. Always check the <a href="https://www.weather.gov/lox/" target="_blank" rel="noopener noreferrer" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">National Weather Service</a> for warnings and advisories. No forecast is perfect—use this alongside other sources, your own observations, and your judgment. The wind at Cabrillo Beach is nearly side-shore, with rocks or the open ocean downwind. When in doubt, stay on the beach: it's full of nice people to talk to!
               </p>
             </div>
           </div>

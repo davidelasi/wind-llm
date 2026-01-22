@@ -91,40 +91,9 @@ export default function FAQ() {
                 Claude Sonnet 4 already supports vision, so the technical foundation is there. I'm planning to work on this feature after releasing the area weather forecast integration mentioned above.
               </p>
             </div>
-
-            {/* Milestone 4 */}
-            <div className="border-l-4 border-gray-300 pl-4">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                📍 Wind Direction Predictions
-              </h2>
-              <p className="text-gray-700 leading-relaxed mb-3">
-                <strong>Status:</strong> Future consideration
-              </p>
-              <p className="text-gray-700 leading-relaxed">
-                Currently, Wind-LA predicts wind speed and gusts but not direction. Adding direction predictions would help riders decide whether it's side-shore, side-onshore, or cross-shore conditions. The data is available—it's a matter of extending the training examples and output format to include directional information.
-              </p>
-            </div>
-
-            {/* Milestone 5 */}
-            <div className="border-l-4 border-gray-300 pl-4">
-              <h2 className="text-xl font-semibold text-gray-800 mb-2">
-                🌡️ Seasonal & Climate Indicators
-              </h2>
-              <p className="text-gray-700 leading-relaxed mb-3">
-                <strong>Status:</strong> Future consideration
-              </p>
-              <p className="text-gray-700 leading-relaxed">
-                Longer-term climate patterns like El Niño and La Niña can affect wind patterns in Southern California. Integrating these indicators could help the model adjust its expectations during anomalous seasons. This is a longer-term enhancement that would require careful validation.
-              </p>
-            </div>
           </div>
 
-          {/* Call to Action */}
-          <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-gray-700 leading-relaxed">
-              <strong>Want to contribute or suggest a feature?</strong> I'm open to collaboration and feedback. Reach out through the <a href="/about" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">About</a> page. If you're a data scientist, machine learning engineer, or just a fellow wind enthusiast with ideas, I'd love to hear from you!
-            </p>
-          </div>
+          
         </div>
       </div>
     </div>

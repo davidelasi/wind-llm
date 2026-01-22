@@ -60,7 +60,7 @@ export default function About() {
             </p>
 
             <p className="text-2xl font-bold text-center mt-8">
-              CIAO
+              🤙
             </p>
           </div>
         </div>

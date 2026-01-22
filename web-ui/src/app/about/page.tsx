@@ -23,19 +23,15 @@ export default function About() {
           {/* Introduction */}
           <div className="prose prose-gray max-w-none space-y-4 text-gray-700 leading-relaxed">
             <p>
-              I am passionate about all possible combinations of water and wind sports. Been there with sailing, windsurfing, kitesurfing, and since last year wingfoiling!
+              I am passionate about all possible combinations of water and wind sports. Been there with sailing, windsurfing, kitesurfing, and since last year wingfoiling! This app is my deep-dive into AI coding tools. Since there is no better way to learn a skill than to apply it to something you love, I figured I might as well code my own system to forecast the wind at my home spot.
             </p>
 
             <p>
-              This app is my deep-dive into AI coding tools. Since there is no better way to learn a skill than to apply it to something you love, I figured I might as well code my own system to forecast the wind at my home spot.
+              Through this vibe-coding journey, I learned to appreciate the different personalities of Anthropic's Claude Code and ChatGPT Codex. I even made some experiments with Cline and the free coding model of Grok. I came to like Claude Code CLI better (for now) although running daily into session limits on the pro plan has been both frustrating, when it kicked in during a complex change, and refreshing, when it made me take healthy breaks.
             </p>
 
             <p>
-              Through this little journey, I learned to appreciate the different personalities of Anthropic's Claude Code and ChatGPT Codex. I even made some experiments with Cline and the free coding model of Grok. I came to like Claude Code CLI better (for now) although running daily into session limits on the pro plan has been both frustrating, when it kicked in during a complex change, and refreshing, when it made me take healthy breaks.
-            </p>
-
-            <p>
-              I went from zero to one in my vibe-coding learning journey with this app, and I tried different tools at different times, so the final code may not be the most elegant example of what can be achieved with these coding tools, when operated by an experienced pilot. There might be some junk code around and suboptimal implementations. But I have an aspirational goal of continuing to make this app more robust and faster, improving modularity and simplifying where possible, especially if this turns out to be a useful tool (which I'll personally test on a weekly basis).
+              I went from zero to one in my AI-coding learning path with this app, and I tried different tools at different times, so the final code may not be the most elegant example of what can be achieved with these coding tools, when operated by an experienced pilot. There might be some junk code around and suboptimal implementations. But I have an aspirational goal of continuing to make this app more robust and faster, improving modularity and simplifying where possible, especially if this turns out to be a useful tool (which I'll personally test on a weekly basis).
             </p>
 
             <p>
@@ -43,7 +39,7 @@ export default function About() {
             </p>
 
             <p>
-              The key lessons I learned through this work is that vibe-coding is not much different than managing a technical team, which is what I do for a living. Clarity of intent and requirements, defining and executing upon a sound roadmap, identifying the key decision points (and asking the help of the AI to make tradeoffs and decisions), and frequent auditing of the work done at a technical level, are key for success. Another important element for success with a team is a sound strategy to divide-and-conquer the problem. I am sure that AI coding tools can go much deeper with that using agents, but I've barely scratched the surface of this agents with this project so far.
+              The key lessons I learned through this work is that vibe-coding is not much different than managing a technical team, which is what I do for a living. Clarity of intent and requirements, defining and executing upon a sound roadmap, identifying the key decision points and tradeoffs, and frequent auditing of the work done at a technical level are all key for success. Another important element for success with a team is a sound strategy to divide-and-conquer the problem. I am sure that AI coding tools can go much deeper with that using agents, but I've barely scratched the surface of this agents with this project so far.
             </p>
 
             <p>

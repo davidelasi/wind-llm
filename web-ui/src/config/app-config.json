@@ -9,9 +9,9 @@
     "description": "Show wind data in navigation regardless of age (for testing). Set to false in production to only show data less than 60 minutes old."
   },
   "debug": {
-    "showDebugSection": false,
-    "showDebugSectionProduction": true,
-    "description": "Controls debug and technical information visibility. showDebugSection: Show Debug section on home page. showDebugSectionProduction: When false, hides debug section in production even if showDebugSection is true. Set to false for official launch."
+    "showDebugSectionLocalhost": true,
+    "showDebugSectionProduction": false,
+    "description": "Controls debug and technical information visibility. showDebugSectionLocalhost: Show Debug section on localhost. showDebugSectionProduction: Show Debug section in production."
   },
   "statistics": {
     "enabled": false,

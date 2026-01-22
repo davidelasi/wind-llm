@@ -1904,7 +1904,8 @@ ${llmPrompt}
         {/* ========================================
             CONSOLIDATED DEBUG SECTION
             ======================================== */}
-        {appConfig.debug.showDebugSection && (isLocalhost || (appConfig.debug as any).showDebugSectionProduction) && (
+        {((isLocalhost && (appConfig.debug as any).showDebugSectionLocalhost) ||
+          (!isLocalhost && (appConfig.debug as any).showDebugSectionProduction)) && (
         <div className={`mt-8 bg-white rounded-lg shadow-lg overflow-hidden border-l-4 ${
           (llmForecastError || windDataError || forecastError) ? 'border-red-500' : 'border-gray-300'
         }`}>

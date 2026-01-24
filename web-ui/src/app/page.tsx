@@ -300,13 +300,8 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
     }
 
     try {
-      // On localhost or with cached data, show overlay animation
-      if (isLocalhost || hasCachedData) {
-        setGeneratingFreshForecast(true);
-      } else {
-        // No cached data and not localhost, show loading state
-        setLlmForecastLoading(true);
-      }
+      // Always show overlay animation while fetching forecast
+      setGeneratingFreshForecast(true);
       setIsDummyForecast(false);
       const params = new URLSearchParams();
       if (forceUpdate) params.set('force', 'true');

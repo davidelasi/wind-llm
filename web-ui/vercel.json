@@ -7,6 +7,12 @@
   "functions": {
     "src/app/api/wind-data/route.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/llm-forecast/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/generate-forecast/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [

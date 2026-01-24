@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { promises as fs } from 'fs';
 import path from 'path';
+
+// Configure runtime for longer timeouts (LLM calls can take 10-30 seconds)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 seconds max for LLM API calls
 import {
   extractInnerWatersForecast,
   extractWarnings,
@@ -287,10 +292,20 @@ interface TrainingExample {
   };
 }
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Initialize Anthropic client lazily to prevent module-level errors
+let anthropic: Anthropic | null = null;
+
+function getAnthropicClient(): Anthropic {
+  if (!anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+    }
+    anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+  }
+  return anthropic;
+}
 
 // NWS API configuration
 const NWS_COASTAL_FORECAST_URL = 'https://api.weather.gov/products/types/CWF/locations/LOX';
@@ -616,7 +631,8 @@ async function generateForecastWithLLM(forecastText: string, issuanceTime: strin
     // modelConfig already loaded above for convertForecastDaysToRelative check
     let response;
     try {
-      response = await anthropic.messages.create({
+      const client = getAnthropicClient();
+      response = await client.messages.create({
         model: modelConfig.model,
         max_tokens: modelConfig.max_tokens.forecast,
         temperature: modelConfig.temperature,

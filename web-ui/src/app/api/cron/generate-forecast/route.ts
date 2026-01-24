@@ -48,16 +48,62 @@ export async function GET(request: NextRequest) {
     console.log(`[CRON-FORECAST] [${cronRunId}] Authorization verified, starting forecast generation`);
 
     // Call the LLM forecast endpoint with force flag
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    // Priority: VERCEL_PROJECT_PRODUCTION_URL > explicit BASE_URL > VERCEL_URL > localhost
+    // Note: VERCEL_URL can return deployment-specific URLs, not the production domain
+    let baseUrl: string;
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+      baseUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+    } else if (process.env.NEXT_PUBLIC_BASE_URL) {
+      baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    } else if (process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`;
+    } else {
+      baseUrl = 'http://localhost:3000';
+    }
 
-    const response = await fetch(`${baseUrl}/api/llm-forecast?force=true&cron=true`, {
+    console.log(`[CRON-FORECAST] [${cronRunId}] Using baseUrl: ${baseUrl}`);
+
+    const fetchUrl = `${baseUrl}/api/llm-forecast?force=true&cron=true`;
+    console.log(`[CRON-FORECAST] [${cronRunId}] Fetching: ${fetchUrl}`);
+
+    const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
         'x-admin-key': process.env.ADMIN_SECRET || ''
       }
     });
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    console.log(`[CRON-FORECAST] [${cronRunId}] Response status: ${response.status}, content-type: ${contentType}`);
+
+    if (!contentType || !contentType.includes('application/json')) {
+      // Response is not JSON (likely an HTML error page)
+      const textBody = await response.text();
+      const preview = textBody.substring(0, 200);
+      console.error(`[CRON-FORECAST] [${cronRunId}] Non-JSON response: ${preview}...`);
+
+      await logCronComplete(cronRunId, 'error', {
+        errorMessage: `API returned non-JSON response (${response.status}): ${preview}`,
+        startTime,
+        details: {
+          httpStatus: response.status,
+          contentType,
+          baseUrl,
+          responsePreview: preview,
+        },
+      });
+
+      return NextResponse.json({
+        success: false,
+        error: `LLM forecast API returned non-JSON response (HTTP ${response.status})`,
+        runId: cronRunId,
+        details: {
+          contentType,
+          responsePreview: preview,
+        }
+      }, { status: 502 });
+    }
 
     const data = await response.json();
 

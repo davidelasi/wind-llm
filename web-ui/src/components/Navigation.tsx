@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Home, Menu, X, Eye, HelpCircle, User, Info } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import appConfig from '@/config/app-config.json';
 import { useWindData } from '@/hooks/useWindData';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
@@ -55,11 +55,8 @@ const CompactWindDisplay = ({ windData, isMobile = false }: { windData: NavWindD
 
   return (
     <div className="flex flex-col items-center">
-      {/* Single line: Label (desktop only), Wind Speed & Direction */}
+      {/* Wind Speed & Direction */}
       <div className="flex items-center space-x-2">
-        {!isMobile && (
-          <span className="text-lg font-bold text-gray-800">Angels Gate Wind</span>
-        )}
         <span className="text-lg font-bold text-gray-800">
           {Math.round(windData.windSpeed)}
           <span className="text-sm text-gray-600 ml-1">kt</span>
@@ -125,9 +122,14 @@ export default function Navigation({ className = '' }: NavigationProps) {
 
   const windData = getLatestWindReading();
 
-  // Check if we're on localhost
-  const isLocalhost = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  // Check if we're on localhost - use state to avoid hydration mismatch
+  const [isLocalhost, setIsLocalhost] = useState(false);
+
+  useEffect(() => {
+    setIsLocalhost(
+      window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    );
+  }, []);
 
   // Determine if statistics should be visible
   const showStatistics = (appConfig as any).statistics?.enabled ||
@@ -185,7 +187,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
   return (
     <>
       {/* Mobile Navigation */}
-      <div className={`2xl:hidden sticky top-0 z-40 ${className}`}>
+      <div className={`xl:hidden sticky top-0 z-40 ${className}`}>
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -247,7 +249,7 @@ export default function Navigation({ className = '' }: NavigationProps) {
       </div>
 
       {/* Desktop Navigation */}
-      <div className={`hidden 2xl:block sticky top-0 z-40 ${className}`}>
+      <div className={`hidden xl:block sticky top-0 z-40 ${className}`}>
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">

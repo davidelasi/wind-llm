@@ -346,7 +346,7 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
             lastUpdated: new Date().toISOString(),
             isLLMGenerated: false,
             source: 'dummy_localhost',
-            warning: null,
+            warning: (appConfig as any).dummyForecast?.warning || null,
             nwsForecastTime: new Date().toISOString(),
             format: 'DUMMY'
           });
@@ -372,7 +372,7 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
           lastUpdated: new Date().toISOString(),
           isLLMGenerated: false,
           source: 'dummy_localhost',
-          warning: null,
+          warning: (appConfig as any).dummyForecast?.warning || null,
           nwsForecastTime: new Date().toISOString(),
           format: 'DUMMY'
         });
@@ -501,7 +501,7 @@ ${llmPrompt}
         lastUpdated: new Date().toISOString(),
         isLLMGenerated: false,
         source: 'dummy_localhost',
-        warning: null,
+        warning: (appConfig as any).dummyForecast?.warning || null,
         nwsForecastTime: new Date().toISOString(),
         format: 'DUMMY'
       });
@@ -1385,7 +1385,7 @@ ${llmPrompt}
                   })}</b>. Next update {getNextUpdateText(llmForecastMeta.nwsForecastTime)}.{' '}
                 </>
               )}
-              The wind at the spot is typically a few knots stronger than predicted; see <a href="/how-it-works"> how it works</a>.
+              The wind at the spot is typically a few knots stronger than predicted; see <a href="/how-it-works" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">how it works</a>.
             </p>
           </div>
 

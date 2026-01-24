@@ -27,6 +27,10 @@
     "dummyDelayMs": 5000,
     "description": "Loading animation configuration. dummyDelayMs: Delay in milliseconds for localhost testing with dummy forecast (default 5000ms)."
   },
+  "dummyForecast": {
+    "warning": "SMALL CRAFT ADVISORY in effect through Saturday afternoon",
+    "description": "Warning text to display with dummy forecast on localhost for testing. Set to null to disable."
+  },
   "colorSchemes": {
     "description": "Color schemes for forecast visualization",
     "windSpeed": {

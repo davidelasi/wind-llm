@@ -118,14 +118,23 @@ export default function HowItWorks() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">How Predictions Are Generated</h2>
             <p className="text-gray-700 leading-relaxed mb-4">
-              Once the system has the NWS forecast text and the 15 curated examples, it passes everything to <strong>Claude Sonnet 4</strong> (Anthropic's large language model). 
-              The model also receives <strong>geographic context</strong> about AGXC1's location—this helps it correctly interpret NWS sub-area mentions like "Malibu to Santa Monica" versus "San Pedro Channel" and apply the right conditions to our specific location. 
+              Once the system has the NWS forecast text and the 15 curated examples, it passes everything to <strong>Claude Sonnet 4</strong> (Anthropic's large language model).
+              The model also receives <strong>geographic context</strong> about AGXC1's location—this helps it correctly interpret NWS sub-area mentions like "Malibu to Santa Monica" versus "San Pedro Channel" and apply the right conditions to our specific location.
               The model analyzes the forecast text, looks at the patterns in the examples, and outputs hourly wind speed and gusts for the next <strong>five days</strong> (D+0 through D+4).
             </p>
             <p className="text-gray-700 leading-relaxed">
               The model's predictions are cached and only regenerated when the NWS releases a new bulletin (typically four times daily). This keeps costs under control while ensuring the forecast stays aligned with official updates.
             </p>
-          </section>       
+          </section>
+
+          {/* Sausage Mode Link */}
+          <div className="mt-8 p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center space-x-3">
+            <span className="text-2xl">🌭</span>
+            <p className="text-base text-gray-700">
+              <a href="/sausage-mode" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">Curious how the sausage is made?</a>
+              {' '}Check out the actual NWS forecast, training examples, and LLM prompt that go into generating each prediction.
+            </p>
+          </div>
         </div>
       </div>
     </div>

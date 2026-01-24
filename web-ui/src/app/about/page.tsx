@@ -35,7 +35,16 @@ export default function About() {
             </p>
 
             <p>
-              99% of the code has been made by Claude Code. Rarely did I go myself into the code to change something. The deepest coding dives in my life have been in Fortran 77 and C, at the time when Mac laptops were running on G4 processors. Far enough to make me a useful inspector of Python or Node.js code. The bulk of my heavy-lifting as human-in-the-loop, though, went into ensuring that AI actually did what it was supposed to do and not something else, especially when dealing with data processing (forecasts and wind parsing for training data sets, etc.). Data curation was one of the deepest sources of rabbit holes.
+              99% of the{' '}
+              <a
+                href="https://github.com/davidelasi/wind-llm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#005F73] hover:text-[#0A9396] underline font-medium"
+              >
+                code
+              </a>
+              {' '}has been made by Claude Code. Rarely did I go myself into the code to change something. The deepest coding dives in my life have been in Fortran 77 and C, at the time when Mac laptops were running on G4 processors. Far enough to make me a useful inspector of Python or Node.js code. The bulk of my heavy-lifting as human-in-the-loop, though, went into ensuring that AI actually did what it was supposed to do and not something else, especially when dealing with data processing (forecasts and wind parsing for training data sets, etc.). Data curation was one of the deepest sources of rabbit holes.
             </p>
 
             <p>

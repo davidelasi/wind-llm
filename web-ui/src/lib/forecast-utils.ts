@@ -3,6 +3,9 @@
  * Used by both area-forecast and llm-forecast APIs
  */
 
+import { formatInTimeZone } from 'date-fns-tz';
+import { PACIFIC_TIMEZONE } from './timezone-utils';
+
 export interface ProcessedForecast {
   processed: string;
   original: string;
@@ -218,8 +221,6 @@ export function calculatePeriodDates(forecastTime: Date): Record<string, number>
  * @returns A string instruction to prepend to the forecast in the prompt
  */
 export function generateDayMappingInstruction(forecastTime: Date): string {
-  const weekdayAbbr = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-
   // Format the forecast date for clarity
   const dateStr = forecastTime.toLocaleDateString('en-US', {
     weekday: 'long',
@@ -238,11 +239,14 @@ export function generateDayMappingInstruction(forecastTime: Date): string {
   mappings.push('- TONIGHT / REST OF TONIGHT → Day 0 Night (day_0 overnight)');
 
   // Generate mappings for the next 4 days (day_1 through day_4)
+  // Use Pacific timezone for date arithmetic to avoid UTC timezone issues on Vercel
   for (let offset = 1; offset <= 4; offset++) {
-    const futureDate = new Date(forecastTime);
-    futureDate.setDate(forecastTime.getDate() + offset);
-    const dayIndex = futureDate.getDay();
-    const abbr = weekdayAbbr[dayIndex];
+    // Add offset days in milliseconds
+    const futureDateUTC = new Date(forecastTime.getTime() + offset * 24 * 60 * 60 * 1000);
+
+    // Get day-of-week name in Pacific timezone (returns 'Sun', 'Mon', etc.)
+    const pacificDayName = formatInTimeZone(futureDateUTC, PACIFIC_TIMEZONE, 'EEE').toUpperCase();
+    const abbr = pacificDayName.slice(0, 3); // 'SUN', 'MON', etc.
 
     // Daytime mapping
     mappings.push(`- ${abbr} / ${abbr}DAY → Day ${offset} Day (day_${offset} daytime)`);

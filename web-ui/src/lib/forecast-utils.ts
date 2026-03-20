@@ -244,14 +244,14 @@ export function generateDayMappingInstruction(forecastTime: Date): string {
     // Add offset days in milliseconds
     const futureDateUTC = new Date(forecastTime.getTime() + offset * 24 * 60 * 60 * 1000);
 
-    // Get day-of-week name in Pacific timezone (returns 'Sun', 'Mon', etc.)
-    const pacificDayName = formatInTimeZone(futureDateUTC, PACIFIC_TIMEZONE, 'EEE').toUpperCase();
-    const abbr = pacificDayName.slice(0, 3); // 'SUN', 'MON', etc.
+    // Get abbreviated and full day-of-week names in Pacific timezone
+    const abbr = formatInTimeZone(futureDateUTC, PACIFIC_TIMEZONE, 'EEE').toUpperCase(); // 'SUN', 'MON', etc.
+    const full = formatInTimeZone(futureDateUTC, PACIFIC_TIMEZONE, 'EEEE').toUpperCase(); // 'SUNDAY', 'MONDAY', etc.
 
     // Daytime mapping
-    mappings.push(`- ${abbr} / ${abbr}DAY → Day ${offset} Day (day_${offset} daytime)`);
+    mappings.push(`- ${abbr} / ${full} → Day ${offset} Day (day_${offset} daytime)`);
     // Nighttime mapping
-    mappings.push(`- ${abbr} NIGHT / ${abbr}DAY NIGHT → Day ${offset} Night (day_${offset} overnight)`);
+    mappings.push(`- ${abbr} NIGHT / ${full} NIGHT → Day ${offset} Night (day_${offset} overnight)`);
   }
 
   return `=== DAY MAPPING INSTRUCTION ===

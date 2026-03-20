@@ -1,10 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line, Legend,
-} from 'recharts';
 import Navigation from '@/components/Navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -133,15 +129,6 @@ export default function TrainingSamplesPage() {
   const sample = samples[selectedIdx];
 
 
-  // Line chart: WSPD by hour for each available day of selected sample
-  const lineData = HOURS.map(hour => {
-    const pt: Record<string, number | string> = { hour: `${hour}h` };
-    DAYS.forEach(d => {
-      const v = sample ? getHourWspd(sample, d, hour) : null;
-      if (v !== null) pt[`d${d}`] = v;
-    });
-    return pt;
-  });
 
   const peakPerSample = samples.map(s => getDaySummary(s, 0)?.peakWspd ?? 0);
   const calmCount    = peakPerSample.filter(v => v < 10).length;
@@ -310,47 +297,6 @@ export default function TrainingSamplesPage() {
           </div>
         )}
 
-        {/* ── Scatter + Profile row ── */}
-        {samples.length > 0 && (
-          <div>
-
-            {/* Multi-day WSPD profile for selected example */}
-            <div className="bg-white rounded-lg shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-800">
-                Example {selectedIdx + 1}
-                {sample && <span className="font-normal text-gray-400"> · {shortDate(sample.issued).md} {shortDate(sample.issued).year}</span>}
-              </h2>
-              <p className="text-xs text-gray-400 mt-0.5 mb-4">WSPD by hour · all days overlaid</p>
-              <ResponsiveContainer width="100%" height={210}>
-                <LineChart data={lineData} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} domain={[0, 'auto']} unit=" kt" width={42} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
-                    formatter={(v: unknown) => [`${v} kt`]}
-                  />
-                  {DAYS.map(d => {
-                    if (!sample?.actual?.[`day_${d}`]) return null;
-                    return (
-                      <Line
-                        key={d}
-                        type="monotone"
-                        dataKey={`d${d}`}
-                        stroke={DAY_COLORS[d]}
-                        strokeWidth={d === selectedDay ? 2.5 : 1.5}
-                        dot={{ r: 2.5, fill: DAY_COLORS[d], strokeWidth: 0 }}
-                        name={`D${d}`}
-                        connectNulls
-                      />
-                    );
-                  })}
-                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
 
         {/* ── NWS Forecast Text ── */}
         {sample && (

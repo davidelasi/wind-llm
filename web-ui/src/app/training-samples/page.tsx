@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip,
+  XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend,
 } from 'recharts';
 import Navigation from '@/components/Navigation';
@@ -132,11 +132,6 @@ export default function TrainingSamplesPage() {
 
   const sample = samples[selectedIdx];
 
-  const scatterData = samples.flatMap((s, i) => {
-    const sum = getDaySummary(s, selectedDay);
-    if (!sum) return [];
-    return [{ x: +sum.avgWspd.toFixed(1), y: +sum.maxGst.toFixed(1), i }];
-  });
 
   // Line chart: WSPD by hour for each available day of selected sample
   const lineData = HOURS.map(hour => {
@@ -317,61 +312,7 @@ export default function TrainingSamplesPage() {
 
         {/* ── Scatter + Profile row ── */}
         {samples.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {/* Scatter: avg WSPD vs peak GST */}
-            <div className="bg-white rounded-lg shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-800">Avg WSPD vs Peak GST</h2>
-              <p className="text-xs text-gray-400 mt-0.5 mb-4">
-                D{selectedDay} · all {scatterData.length} examples
-                {' '}· <span style={{ color: '#1d4ed8' }}>●</span> selected
-              </p>
-              <ResponsiveContainer width="100%" height={210}>
-                <ScatterChart margin={{ top: 8, right: 12, bottom: 20, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                  <XAxis
-                    dataKey="x" type="number" name="WSPD" domain={[0, 'auto']}
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
-                    label={{ value: 'avg WSPD (kt)', position: 'insideBottom', offset: -10, fontSize: 10, fill: '#9ca3af' }}
-                  />
-                  <YAxis
-                    dataKey="y" type="number" name="GST" domain={[0, 'auto']}
-                    tick={{ fontSize: 10, fill: '#9ca3af' }}
-                    label={{ value: 'peak GST (kt)', angle: -90, position: 'insideLeft', offset: 12, fontSize: 10, fill: '#9ca3af' }}
-                    width={38}
-                  />
-                  <Tooltip
-                    cursor={{ strokeDasharray: '3 3' }}
-                    content={({ payload }) => {
-                      if (!payload?.length) return null;
-                      const d = payload[0].payload;
-                      return (
-                        <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 shadow">
-                          Ex {d.i + 1} &nbsp;·&nbsp; WSPD {d.x} kt &nbsp;·&nbsp; GST {d.y} kt
-                        </div>
-                      );
-                    }}
-                  />
-                  <Scatter
-                    data={scatterData}
-                    shape={(props: { cx?: number; cy?: number; payload?: { i: number; x: number; y: number } }) => {
-                      const { cx = 0, cy = 0, payload } = props;
-                      const sel = payload?.i === selectedIdx;
-                      return (
-                        <circle
-                          cx={cx} cy={cy}
-                          r={sel ? 7 : 4}
-                          fill={sel ? '#1d4ed8' : DAY_COLORS[selectedDay]}
-                          fillOpacity={sel ? 1 : 0.6}
-                          stroke={sel ? '#fff' : 'none'}
-                          strokeWidth={sel ? 2 : 0}
-                        />
-                      );
-                    }}
-                  />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </div>
+          <div>
 
             {/* Multi-day WSPD profile for selected example */}
             <div className="bg-white rounded-lg shadow-sm p-5">

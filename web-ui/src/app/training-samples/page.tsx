@@ -183,10 +183,14 @@ export default function TrainingSamplesPage() {
     };
   });
 
-  // Chart 3 — Diurnal profile: mean WSPD by hour for selected day
+  // Chart 3 — Diurnal profile: mean WSPD by hour for each day D0–D4
   const diurnalData = HOURS.map(h => {
-    const vals = samples.map(s => getHourWspd(s, selectedDay, h)).filter((v): v is number => v !== null);
-    return { hour: `${h}h`, wspd: vals.length ? +mean(vals).toFixed(1) : 0 };
+    const pt: Record<string, number | string> = { hour: `${h}h` };
+    DAYS.forEach(d => {
+      const vals = samples.map(s => getHourWspd(s, d, h)).filter((v): v is number => v !== null);
+      pt[`d${d}`] = vals.length ? +mean(vals).toFixed(1) : 0;
+    });
+    return pt;
   });
 
   // Chart 4 — Category balance by day
@@ -382,8 +386,8 @@ export default function TrainingSamplesPage() {
 
                   {/* Chart 3 — Diurnal Profile */}
                   <div>
-                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Diurnal Profile · D{selectedDay}</p>
-                    <p className="text-xs text-gray-400 mb-3">mean WSPD by hour across all 15 examples</p>
+                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Diurnal Profile</p>
+                    <p className="text-xs text-gray-400 mb-3">mean WSPD by hour · D0–D4 overlaid</p>
                     <ResponsiveContainer width="100%" height={180}>
                       <LineChart data={diurnalData} margin={chartMargin}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -391,9 +395,12 @@ export default function TrainingSamplesPage() {
                         <YAxis {...axisProps} unit=" kt" width={36} domain={[0, 'auto']} />
                         <Tooltip
                           contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
-                          formatter={(v: unknown) => [`${v} kt`, 'mean WSPD']}
+                          formatter={(v: unknown, name: string | undefined) => [`${v} kt`, name ?? '']}
                         />
-                        <Line type="monotone" dataKey="wspd" stroke={DAY_COLORS[selectedDay]} strokeWidth={2} dot={{ r: 3, fill: DAY_COLORS[selectedDay], strokeWidth: 0 }} />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        {DAYS.map(d => (
+                          <Line key={d} type="monotone" dataKey={`d${d}`} name={`D${d}`} stroke={DAY_COLORS[d]} strokeWidth={2} dot={{ r: 2.5, fill: DAY_COLORS[d], strokeWidth: 0 }} />
+                        ))}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

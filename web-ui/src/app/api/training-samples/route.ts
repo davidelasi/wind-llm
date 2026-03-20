@@ -3,10 +3,6 @@ import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
 
 export async function GET(req: NextRequest) {
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Not available' }, { status: 403 });
-  }
-
   const { searchParams } = new URL(req.url);
   const file = searchParams.get('file');
   const dir = path.join(process.cwd(), 'data/training/few_shot_examples');

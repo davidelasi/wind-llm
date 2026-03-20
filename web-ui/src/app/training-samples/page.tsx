@@ -105,7 +105,6 @@ function groupByMonth(files: string[]): Record<string, string[]> {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TrainingSamplesPage() {
-  const [isLocal, setIsLocal]         = useState<boolean | null>(null);
   const [fileList, setFileList]       = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState(defaultFile());
   const [samples, setSamples]         = useState<TrainingSample[]>([]);
@@ -115,33 +114,19 @@ export default function TrainingSamplesPage() {
   const [tooltip, setTooltip]         = useState<{ val: number; x: number; y: number } | null>(null);
   const [forecastOpen, setForecastOpen] = useState(true);
 
-  // Local-only guard
-  useEffect(() => {
-    const h = window.location.hostname;
-    setIsLocal(h === 'localhost' || h === '127.0.0.1');
-  }, []);
-
   // Fetch file list
   useEffect(() => {
-    if (!isLocal) return;
     fetch('/api/training-samples').then(r => r.json()).then(d => setFileList(d.files ?? []));
-  }, [isLocal]);
+  }, []);
 
   // Fetch selected file
   useEffect(() => {
-    if (!isLocal || !selectedFile) return;
+    if (!selectedFile) return;
     setLoading(true);
     fetch(`/api/training-samples?file=${selectedFile}`)
       .then(r => r.json())
       .then(d => { setSamples(Array.isArray(d) ? d : []); setSelectedIdx(0); setLoading(false); });
-  }, [isLocal, selectedFile]);
-
-  if (isLocal === null) return null;
-  if (!isLocal) return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <p className="text-gray-500 text-sm">This page is only available in local development.</p>
-    </div>
-  );
+  }, [selectedFile]);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
 

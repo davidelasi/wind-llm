@@ -152,6 +152,7 @@ const [generatingFreshForecast, setGeneratingFreshForecast] = useState(false);
 const [llmForecastError, setLlmForecastError] = useState<string | null>(null);
 const [llmForecastMeta, setLlmForecastMeta] = useState<any>(null);
 const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
+const [llmReasoning, setLlmReasoning] = useState<string | null>(null);
 const [isDummyForecast, setIsDummyForecast] = useState(false);
 const [showLlmPrompt, setShowLlmPrompt] = useState(false);
 const [showDebugSection, setShowDebugSection] = useState(false);
@@ -344,6 +345,7 @@ const [storeWindMessage, setStoreWindMessage] = useState<string | null>(null);
         setLlmForecastData(predictions);
         setLlmForecastMeta(meta);
         setLlmPrompt(data.data.llmPrompt || null);
+        setLlmReasoning(data.data.reasoning ?? null);
 
         setLlmForecastError(null);
       } else {
@@ -1512,6 +1514,15 @@ ${llmPrompt}
             );
           })()}
 
+          {/* ========== WHAT TO EXPECT (LLM REASONING) ========== */}
+          {llmReasoning && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mt-4 mx-1">
+              <p className="text-xs font-semibold text-blue-600 mb-1 uppercase tracking-wide">
+                What to Expect
+              </p>
+              <p className="text-sm text-blue-900 leading-relaxed">{llmReasoning}</p>
+            </div>
+          )}
 
           {/* ========== MARINE FORECAST ========== */}
           <div className="mt-6 mx-1">

@@ -36,6 +36,7 @@ export interface ForecastStorageData {
   // Quality
   source: string;
   notes?: string;
+  reasoning?: string;
 }
 
 /**
@@ -97,7 +98,8 @@ export async function storeForecast(data: ForecastStorageData): Promise<string |
         forecast_number,
         predictions,
         source,
-        storage_notes
+        storage_notes,
+        reasoning
       ) VALUES (
         ${forecastHash},
         ${data.nwsIssuedAt},
@@ -112,7 +114,8 @@ export async function storeForecast(data: ForecastStorageData): Promise<string |
         ${data.forecastNumber},
         ${JSON.stringify(predictionsJson)},
         ${data.source},
-        ${data.notes || null}
+        ${data.notes || null},
+        ${data.reasoning || null}
       )
       RETURNING id
     `;
@@ -188,6 +191,7 @@ export async function getMostRecentForecast(): Promise<{
   model: string;
   temperature: number;
   source: string;
+  reasoning?: string | null;
 } | null> {
   // Skip database in local development
   if (shouldSkipDatabase()) {
@@ -206,7 +210,8 @@ export async function getMostRecentForecast(): Promise<{
         llm_prompt,
         model,
         temperature,
-        source
+        source,
+        reasoning
       FROM forecasts
       WHERE source = 'fresh_llm'
       ORDER BY nws_issued_at DESC
@@ -238,7 +243,8 @@ export async function getMostRecentForecast(): Promise<{
       llmPrompt: row.llm_prompt,
       model: row.model,
       temperature: parseFloat(row.temperature),
-      source: row.source
+      source: row.source,
+      reasoning: row.reasoning ?? null
     };
 
   } catch (error) {

@@ -214,6 +214,7 @@ async function withSafeDay0(data: {
   source: string;
   warning?: string;
   llmPrompt?: string;
+  reasoning?: string | null;
 }) {
   try {
     const pacificHour = getCurrentPacificHour();
@@ -398,8 +399,8 @@ async function loadTrainingExamples(issuanceIso: string): Promise<TrainingExampl
   }
 }
 
-function createFewShotPrompt(formattedForecast: string, warnings: string[], examples: TrainingExample[], dayMappingInstruction?: string, geographicContext?: string): string {
-  const systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
+function createFewShotPrompt(formattedForecast: string, warnings: string[], examples: TrainingExample[], dayMappingInstruction?: string, geographicContext?: string, reasoningInstruction?: string): string {
+  let systemPrompt = `You are an expert wind forecasting system for ocean sports at AGXC1 station (Los Angeles area).
 
 Your task is to predict hourly wind speed (WSPD), gust speed (GST), and wind direction for 10 AM - 6 PM PST for the next 5 days based on NWS coastal forecasts.
 
@@ -414,6 +415,10 @@ Key requirements:
 Here are ${examples.length} examples showing how NWS multi-day forecasts translate to actual conditions:
 
 `;
+
+  if (reasoningInstruction) {
+    systemPrompt += `\n\n${reasoningInstruction}`;
+  }
 
   let examplesText = '';
   examples.slice(0, 15).forEach((example, index) => {
@@ -510,6 +515,7 @@ NOW PREDICT based on the following NWS forecast:
 CRITICAL: Return your prediction in JSON format.
 Return predictions for ALL 5 days in this EXACT JSON structure. Replace EVERY null with your predicted numbers; do not leave nulls or placeholders:
 {
+  "reasoning": "A strong high-pressure system is keeping winds light this morning, but expect a lively sea breeze to fill in by early afternoon today, building to 15-18 knots by 3 PM. Tomorrow looks very similar. Wednesday winds ease as the high weakens.",
   "day_0": [
     {"hour": 10, "wspd_kt": null, "gst_kt": null, "wdir_deg": null},
     {"hour": 11, "wspd_kt": null, "gst_kt": null, "wdir_deg": null},
@@ -538,7 +544,8 @@ Return predictions for ALL 5 days in this EXACT JSON structure. Replace EVERY nu
 CRITICAL REMINDER:
 - Training examples above were in JSON format
 - Your OUTPUT must also be in JSON format (curly braces and quotes)
-- Respond with ONLY the JSON object, no explanations, no narrative text
+- Include the "reasoning" field as the first key in your JSON output
+- Respond with ONLY the JSON object, no explanations outside the JSON
 ========================================`;
 
   return systemPrompt + examplesText + currentForecastPrompt;
@@ -550,7 +557,7 @@ function getWindDirectionText(degrees: number): string {
   return directions[index];
 }
 
-async function generateForecastWithLLM(forecastText: string, issuanceTime: string): Promise<{ predictions: ForecastPrediction[][], prompt: string } | null> {
+async function generateForecastWithLLM(forecastText: string, issuanceTime: string): Promise<{ predictions: ForecastPrediction[][], prompt: string, reasoning?: string } | null> {
   try {
     console.log('[LLM-FORECAST] Processing forecast...');
     console.log(`[LLM-FORECAST] Raw forecast text length: ${forecastText.length}`);
@@ -560,13 +567,18 @@ async function generateForecastWithLLM(forecastText: string, issuanceTime: strin
     const convertDays = modelConfig.convertForecastDaysToRelative !== false; // Default true for backwards compatibility
     const includeGeoContext = modelConfig.includeGeographicContext !== false; // Default true
 
-    // Load geographic context if enabled
+    // Load geographic context and reasoning instruction if enabled
     let geographicContext: string | undefined;
+    let reasoningInstruction: string | undefined;
     if (includeGeoContext) {
       try {
         const promptConfig = await loadPromptConfig();
         geographicContext = promptConfig.geographicContext;
+        reasoningInstruction = promptConfig.reasoningInstruction as string | undefined;
         console.log('[LLM-FORECAST] Geographic context loaded from prompt_config.json');
+        if (reasoningInstruction) {
+          console.log('[LLM-FORECAST] Reasoning instruction loaded from prompt_config.json');
+        }
       } catch (err) {
         console.warn('[LLM-FORECAST] Failed to load geographic context, continuing without it:', err);
       }
@@ -624,7 +636,7 @@ async function generateForecastWithLLM(forecastText: string, issuanceTime: strin
     }
 
     console.log('[LLM-FORECAST] Creating few-shot prompt with JSON format examples...');
-    const prompt = createFewShotPrompt(formattedForecast, warnings, examples, dayMappingInstruction, geographicContext);
+    const prompt = createFewShotPrompt(formattedForecast, warnings, examples, dayMappingInstruction, geographicContext, reasoningInstruction);
     console.log(`[LLM-FORECAST] JSON prompt created, length: ${prompt.length} characters`);
 
     console.log('[LLM-FORECAST] Calling Claude API for 5-day forecast prediction...');
@@ -670,15 +682,20 @@ async function generateForecastWithLLM(forecastText: string, issuanceTime: strin
       throw new Error('No JSON found in Claude response');
     }
 
-    const prediction = JSON.parse(jsonMatch[0]);
+    const parsedJson = JSON.parse(jsonMatch[0]);
+    const llmReasoning: string | undefined =
+      typeof parsedJson.reasoning === 'string' ? parsedJson.reasoning.trim() : undefined;
 
-    const normalizedPredictions = normalizeModelPredictions(prediction);
+    const normalizedPredictions = normalizeModelPredictions(parsedJson);
     if (!normalizedPredictions) {
       throw new Error('LLM forecast missing required 8-slot window (hours 10-17)');
     }
 
     console.log('[LLM-FORECAST] Successfully generated 5-day forecast with strict 8-slot window');
-    return { predictions: normalizedPredictions, prompt };
+    if (llmReasoning) {
+      console.log(`[LLM-FORECAST] Reasoning extracted (${llmReasoning.length} chars)`);
+    }
+    return { predictions: normalizedPredictions, prompt, reasoning: llmReasoning };
 
   } catch (error) {
     const errorDetails = {
@@ -787,7 +804,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_nws_failed',
           warning: 'Unable to fetch latest NWS forecast, using stored forecast',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
         return NextResponse.json({
           success: true,
@@ -827,7 +845,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_cron_only',
           warning: 'On-demand generation disabled. Forecasts updated via scheduled cron jobs only.',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
 
         return NextResponse.json({
@@ -884,7 +903,8 @@ export async function GET(request: NextRequest) {
           lastUpdated: dbForecast.llmGeneratedAt,
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_current',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
 
         return NextResponse.json({
@@ -914,7 +934,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_extraction_failed',
           warning: 'Unable to extract inner waters forecast, using stored forecast',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
         return NextResponse.json({
           success: true,
@@ -952,7 +973,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_local_llm_disabled',
           warning: 'Local LLM calls disabled. Set ALLOW_LLM_CALLS=true to enable.',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
         return NextResponse.json({
           success: true,
@@ -994,7 +1016,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_rate_limited',
           warning: `Daily LLM call limit reached (${maxDailyCalls} calls). Using stored forecast.`,
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
         return NextResponse.json({
           success: true,
@@ -1047,7 +1070,8 @@ export async function GET(request: NextRequest) {
           nwsForecastTime: dbForecast.nwsIssuedAt,
           source: 'db_llm_failed',
           warning: 'LLM forecast generation failed, using stored forecast',
-          llmPrompt: dbForecast.llmPrompt
+          llmPrompt: dbForecast.llmPrompt,
+          reasoning: dbForecast.reasoning
         });
 
         return NextResponse.json({
@@ -1090,7 +1114,8 @@ export async function GET(request: NextRequest) {
         forecastNumber,
         predictions: result.predictions,
         source: 'fresh_llm',
-        notes: undefined
+        notes: undefined,
+        reasoning: result.reasoning
       };
 
       // Store forecast synchronously to ensure it completes before next request
@@ -1116,7 +1141,8 @@ export async function GET(request: NextRequest) {
       lastUpdated: now.toISOString(),
       nwsForecastTime: nwsForecast.issuedTime,
       source: 'fresh_llm',
-      llmPrompt: result.prompt
+      llmPrompt: result.prompt,
+      reasoning: result.reasoning
     });
 
     return NextResponse.json({

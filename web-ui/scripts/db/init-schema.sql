@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS forecasts (
   -- Quality tracking
   source VARCHAR(50) NOT NULL,
   storage_notes TEXT,
+  reasoning TEXT,
 
   -- Validation
   CONSTRAINT forecasts_valid_month CHECK (month IN (

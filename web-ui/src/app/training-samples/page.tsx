@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  BarChart, Bar, Cell, ErrorBar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import Navigation from '@/components/Navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -28,10 +32,11 @@ interface TrainingSample {
 
 const HOURS = [10, 11, 12, 13, 14, 15, 16, 17];
 const DAYS = [0, 1, 2, 3, 4];
-const CELL_W = 46;
 const CELL_H = 30;
 const LABEL_W = 64;
 const DAY_COLORS = ['#3b82f6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+const FC_COLORS  = ['#1e40af', '#0ea5e9', '#f59e0b', '#7c3aed'];
+const FC_TIMES   = ['~4 AM', '~10 AM', '~4 PM', '~10 PM'];
 const MONTH_ORDER = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 const MONTH_NAMES: Record<string, string> = {
   jan:'January', feb:'February', mar:'March',    apr:'April',
@@ -41,7 +46,6 @@ const MONTH_NAMES: Record<string, string> = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Map WSPD (kt) to an RGB color along a calm→strong gradient. */
 function wspdColor(kt: number): string {
   const stops = [
     { v: 0,  r: 240, g: 249, b: 255 },
@@ -60,9 +64,7 @@ function wspdColor(kt: number): string {
 }
 
 function getHourWspd(sample: TrainingSample, day: number, hour: number): number | null {
-  const entry = sample.actual?.[`day_${day}`]?.hourly.find(
-    h => parseInt(h.hour) === hour
-  );
+  const entry = sample.actual?.[`day_${day}`]?.hourly.find(h => parseInt(h.hour) === hour);
   return entry?.wspd_avg_kt ?? null;
 }
 
@@ -81,10 +83,7 @@ function getDaySummary(sample: TrainingSample, day: number) {
 function shortDate(iso: string): { md: string; year: string } {
   try {
     const dt = new Date(iso);
-    return {
-      md:   dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      year: String(dt.getFullYear()),
-    };
+    return { md: dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), year: String(dt.getFullYear()) };
   } catch { return { md: iso, year: '' }; }
 }
 
@@ -98,17 +97,23 @@ function groupByMonth(files: string[]): Record<string, string[]> {
   return g;
 }
 
+function mean(arr: number[]): number {
+  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TrainingSamplesPage() {
-  const [fileList, setFileList]       = useState<string[]>([]);
+  const [fileList, setFileList]         = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState(defaultFile());
-  const [samples, setSamples]         = useState<TrainingSample[]>([]);
-  const [loading, setLoading]         = useState(false);
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [tooltip, setTooltip]         = useState<{ val: number; x: number; y: number } | null>(null);
+  const [samples, setSamples]           = useState<TrainingSample[]>([]);
+  const [allFcSamples, setAllFcSamples] = useState<Record<number, TrainingSample[]>>({});
+  const [loading, setLoading]           = useState(false);
+  const [selectedDay, setSelectedDay]   = useState(0);
+  const [selectedIdx, setSelectedIdx]   = useState(0);
+  const [tooltip, setTooltip]           = useState<{ val: number; x: number; y: number } | null>(null);
   const [forecastOpen, setForecastOpen] = useState(true);
+  const [qualityOpen, setQualityOpen]   = useState(true);
 
   // Fetch file list
   useEffect(() => {
@@ -124,21 +129,79 @@ export default function TrainingSamplesPage() {
       .then(d => { setSamples(Array.isArray(d) ? d : []); setSelectedIdx(0); setLoading(false); });
   }, [selectedFile]);
 
+  // Fetch all 4 FC files for the current month (for FC bias chart)
+  useEffect(() => {
+    const month = selectedFile.split('_')[0];
+    Promise.all([1, 2, 3, 4].map(fc =>
+      fetch(`/api/training-samples?file=${month}_fc${fc}_examples.json`)
+        .then(r => r.json())
+        .then(d => Array.isArray(d) ? d : [])
+    )).then(results => {
+      setAllFcSamples({ 1: results[0], 2: results[1], 3: results[2], 4: results[3] });
+    });
+  }, [selectedFile]);
+
   // ── Derived ──────────────────────────────────────────────────────────────────
 
-  const sample = samples[selectedIdx];
-
-
+  const sample     = samples[selectedIdx];
+  const currentFc  = parseInt(selectedFile.match(/fc(\d)/)?.[1] ?? '1');
 
   const peakPerSample = samples.map(s => getDaySummary(s, 0)?.peakWspd ?? 0);
-  const calmCount    = peakPerSample.filter(v => v < 10).length;
-  const modCount     = peakPerSample.filter(v => v >= 10 && v <= 20).length;
-  const strongCount  = peakPerSample.filter(v => v > 20).length;
-  const warnCount    = samples.filter(s => s.warnings).length;
-  const years = samples.map(s => new Date(s.issued).getFullYear());
-  const yearRange = years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '';
+  const calmCount     = peakPerSample.filter(v => v < 10).length;
+  const modCount      = peakPerSample.filter(v => v >= 10 && v <= 20).length;
+  const strongCount   = peakPerSample.filter(v => v > 20).length;
+  const warnCount     = samples.filter(s => s.warnings).length;
+  const years         = samples.map(s => new Date(s.issued).getFullYear());
+  const yearRange     = years.length ? `${Math.min(...years)}–${Math.max(...years)}` : '';
 
   const grouped = groupByMonth(fileList);
+
+  // Chart 1 — FC bias: mean D0 avg WSPD per FC
+  const fcBiasData = [1, 2, 3, 4].map((fc, i) => {
+    const s = allFcSamples[fc] ?? [];
+    const avgs = s.map(x => getDaySummary(x, 0)?.avgWspd).filter((v): v is number => v != null);
+    const peaks = s.map(x => getDaySummary(x, 0)?.peakWspd ?? 0);
+    return {
+      label: `FC${fc}`,
+      time: FC_TIMES[i],
+      wspd: avgs.length ? +mean(avgs).toFixed(1) : 0,
+      calm: peaks.filter(v => v < 10).length,
+      moderate: peaks.filter(v => v >= 10 && v <= 20).length,
+      strong: peaks.filter(v => v > 20).length,
+    };
+  });
+
+  // Chart 2 — WSPD by day D0→D4: mean + error bars (asymmetric min/max)
+  const wspdByDay = DAYS.map(d => {
+    const avgs = samples.map(s => getDaySummary(s, d)?.avgWspd).filter((v): v is number => v != null);
+    if (!avgs.length) return { day: `D${d}`, mean: 0, error: [0, 0] as [number, number] };
+    const m = mean(avgs);
+    return {
+      day: `D${d}`,
+      mean: +m.toFixed(1),
+      error: [+(m - Math.min(...avgs)).toFixed(1), +(Math.max(...avgs) - m).toFixed(1)] as [number, number],
+    };
+  });
+
+  // Chart 3 — Diurnal profile: mean WSPD by hour for selected day
+  const diurnalData = HOURS.map(h => {
+    const vals = samples.map(s => getHourWspd(s, selectedDay, h)).filter((v): v is number => v !== null);
+    return { hour: `${h}h`, wspd: vals.length ? +mean(vals).toFixed(1) : 0 };
+  });
+
+  // Chart 4 — Category balance by day
+  const categoryByDay = DAYS.map(d => {
+    const peaks = samples.map(s => getDaySummary(s, d)?.peakWspd ?? 0);
+    return {
+      day: `D${d}`,
+      calm:     peaks.filter(v => v < 10).length,
+      moderate: peaks.filter(v => v >= 10 && v <= 20).length,
+      strong:   peaks.filter(v => v > 20).length,
+    };
+  });
+
+  const chartMargin = { top: 8, right: 12, bottom: 8, left: 0 };
+  const axisProps = { tick: { fontSize: 10, fill: '#9ca3af' } };
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -151,7 +214,7 @@ export default function TrainingSamplesPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Training Samples Explorer</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Few-shot examples loaded into the LLM prompt · local only</p>
+            <p className="text-xs text-gray-400 mt-0.5">Few-shot examples loaded into the LLM prompt</p>
           </div>
           <select
             value={selectedFile}
@@ -191,17 +254,13 @@ export default function TrainingSamplesPage() {
                 <h2 className="text-sm font-semibold text-gray-800">Wind Speed Matrix</h2>
                 <p className="text-xs text-gray-400 mt-0.5">avg WSPD (kt) · 10 AM – 5 PM · click a row to inspect</p>
               </div>
-              {/* Day selector */}
               <div className="flex gap-1">
                 {DAYS.map(d => (
                   <button
                     key={d}
                     onClick={() => setSelectedDay(d)}
                     className="text-xs px-2.5 py-1 rounded font-medium transition-colors"
-                    style={selectedDay === d
-                      ? { backgroundColor: DAY_COLORS[d], color: '#fff' }
-                      : { backgroundColor: '#f3f4f6', color: '#6b7280' }
-                    }
+                    style={selectedDay === d ? { backgroundColor: DAY_COLORS[d], color: '#fff' } : { backgroundColor: '#f3f4f6', color: '#6b7280' }}
                   >
                     D{d}
                   </button>
@@ -209,20 +268,11 @@ export default function TrainingSamplesPage() {
               </div>
             </div>
 
-            {/* Heatmap grid — fluid columns, no horizontal scroll */}
-            <div className="select-none" style={{ '--label-w': `${LABEL_W}px` } as React.CSSProperties}>
-              {/* Hour labels */}
-              <div
-                className="mb-1"
-                style={{ display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${HOURS.length}, 1fr)`, gap: 2 }}
-              >
+            <div className="select-none">
+              <div className="mb-1" style={{ display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${HOURS.length}, 1fr)`, gap: 2 }}>
                 <div />
-                {HOURS.map(h => (
-                  <div key={h} className="text-center text-xs text-gray-400 font-mono">{h}h</div>
-                ))}
+                {HOURS.map(h => <div key={h} className="text-center text-xs text-gray-400 font-mono">{h}h</div>)}
               </div>
-
-              {/* Example rows */}
               {samples.map((s, si) => (
                 <div
                   key={si}
@@ -230,21 +280,13 @@ export default function TrainingSamplesPage() {
                   style={{ display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${HOURS.length}, 1fr)`, gap: 2, alignItems: 'center' }}
                   onClick={() => setSelectedIdx(si)}
                 >
-                  {/* Row label */}
                   <div
                     className="text-xs text-right pr-2 font-mono transition-colors leading-tight"
-                    style={{
-                      color: si === selectedIdx ? '#1d4ed8' : '#9ca3af',
-                      fontWeight: si === selectedIdx ? 600 : 400,
-                    }}
+                    style={{ color: si === selectedIdx ? '#1d4ed8' : '#9ca3af', fontWeight: si === selectedIdx ? 600 : 400 }}
                   >
                     {shortDate(s.issued).md}
-                    <span className="block text-gray-300" style={{ fontSize: 9, fontWeight: 400 }}>
-                      {shortDate(s.issued).year}
-                    </span>
+                    <span className="block text-gray-300" style={{ fontSize: 9, fontWeight: 400 }}>{shortDate(s.issued).year}</span>
                   </div>
-
-                  {/* Cells */}
                   {HOURS.map((hour, hi) => {
                     const val = getHourWspd(s, selectedDay, hour);
                     return (
@@ -272,16 +314,9 @@ export default function TrainingSamplesPage() {
               ))}
             </div>
 
-            {/* Legend */}
             <div className="flex items-center gap-2 mt-4">
               <span className="text-xs text-gray-400">0</span>
-              <div
-                className="h-2 rounded-full flex-1"
-                style={{
-                  maxWidth: 180,
-                  background: `linear-gradient(to right, ${wspdColor(0)}, ${wspdColor(8)}, ${wspdColor(15)}, ${wspdColor(22)}, ${wspdColor(28)})`,
-                }}
-              />
+              <div className="h-2 rounded-full flex-1" style={{ maxWidth: 180, background: `linear-gradient(to right, ${wspdColor(0)}, ${wspdColor(8)}, ${wspdColor(15)}, ${wspdColor(22)}, ${wspdColor(28)})` }} />
               <span className="text-xs text-gray-400">28+ kt</span>
             </div>
           </div>
@@ -289,14 +324,141 @@ export default function TrainingSamplesPage() {
 
         {/* Floating tooltip */}
         {tooltip && (
-          <div
-            className="fixed z-50 pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg"
-            style={{ left: tooltip.x, top: tooltip.y - 34, transform: 'translateX(-50%)' }}
-          >
+          <div className="fixed z-50 pointer-events-none bg-gray-900 text-white text-xs rounded px-2 py-1 shadow-lg" style={{ left: tooltip.x, top: tooltip.y - 34, transform: 'translateX(-50%)' }}>
             {tooltip.val.toFixed(1)} kt
           </div>
         )}
 
+        {/* ── Data Quality ── */}
+        {samples.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-gray-50 transition-colors"
+              onClick={() => setQualityOpen(o => !o)}
+            >
+              <div>
+                <span className="text-sm font-semibold text-gray-800">Data Quality & Bias</span>
+                <span className="ml-2 text-xs text-gray-400">FC1–FC4 comparison · day-offset bias · diurnal pattern · category balance</span>
+              </div>
+              <span className="text-gray-400 text-xs ml-4 shrink-0">{qualityOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {qualityOpen && (
+              <div className="px-5 pb-6 border-t border-gray-50 space-y-4 pt-4">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  {/* Chart 1 — FC Bias */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Forecast Number Bias</p>
+                    <p className="text-xs text-gray-400 mb-3">mean D0 avg WSPD per FC · current FC highlighted</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={fcBiasData} margin={chartMargin}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis dataKey="label" {...axisProps} />
+                        <YAxis {...axisProps} unit=" kt" width={36} domain={[0, 'auto']} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
+                          content={({ payload, label }) => {
+                            if (!payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-gray-900 text-white text-xs rounded px-2 py-1.5 space-y-0.5">
+                                <div className="font-semibold">{label} · {d.time}</div>
+                                <div>Mean WSPD: {d.wspd} kt</div>
+                                <div className="text-gray-400">{d.calm}C · {d.moderate}M · {d.strong}S</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="wspd" radius={[3, 3, 0, 0]}>
+                          {fcBiasData.map((_, i) => (
+                            <Cell key={i} fill={i + 1 === currentFc ? FC_COLORS[i] : '#d1d5db'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Chart 3 — Diurnal Profile */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Diurnal Profile · D{selectedDay}</p>
+                    <p className="text-xs text-gray-400 mb-3">mean WSPD by hour across all 15 examples</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={diurnalData} margin={chartMargin}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                        <XAxis dataKey="hour" {...axisProps} />
+                        <YAxis {...axisProps} unit=" kt" width={36} domain={[0, 'auto']} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
+                          formatter={(v: unknown) => [`${v} kt`, 'mean WSPD']}
+                        />
+                        <Line type="monotone" dataKey="wspd" stroke={DAY_COLORS[selectedDay]} strokeWidth={2} dot={{ r: 3, fill: DAY_COLORS[selectedDay], strokeWidth: 0 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  {/* Chart 2 — WSPD by Day */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Avg WSPD by Forecast Day</p>
+                    <p className="text-xs text-gray-400 mb-3">mean ± range across all 15 examples</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={wspdByDay} margin={chartMargin}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis dataKey="day" {...axisProps} />
+                        <YAxis {...axisProps} unit=" kt" width={36} domain={[0, 'auto']} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
+                          content={({ payload, label }) => {
+                            if (!payload?.length) return null;
+                            const d = payload[0].payload;
+                            return (
+                              <div className="bg-gray-900 text-white text-xs rounded px-2 py-1.5 space-y-0.5">
+                                <div className="font-semibold">{label}</div>
+                                <div>Mean: {d.mean} kt</div>
+                                <div className="text-gray-400">Range: {+(d.mean - d.error[0]).toFixed(1)}–{+(d.mean + d.error[1]).toFixed(1)} kt</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="mean" radius={[3, 3, 0, 0]}>
+                          {wspdByDay.map((_, i) => <Cell key={i} fill={DAY_COLORS[i]} />)}
+                          <ErrorBar dataKey="error" width={4} strokeWidth={1.5} stroke="#6b7280" direction="y" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Chart 4 — Category Balance */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-700 mb-0.5">Wind Category Balance by Day</p>
+                    <p className="text-xs text-gray-400 mb-3">calm / moderate / strong count per forecast day</p>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={categoryByDay} margin={chartMargin}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                        <XAxis dataKey="day" {...axisProps} />
+                        <YAxis {...axisProps} allowDecimals={false} width={24} />
+                        <Tooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 6, border: '1px solid #e5e7eb' }}
+                          formatter={(v, name) => [`${v}`, name ?? '']}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        <Bar dataKey="calm"     stackId="a" fill="#93c5fd" name="calm"     radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="moderate" stackId="a" fill="#fbbf24" name="moderate" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="strong"   stackId="a" fill="#ef4444" name="strong"   radius={[3, 3, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── NWS Forecast Text ── */}
         {sample && (
@@ -307,9 +469,7 @@ export default function TrainingSamplesPage() {
             >
               <span className="text-sm font-semibold text-gray-800">
                 NWS Forecast Text · Ex {selectedIdx + 1}
-                {sample.warnings && (
-                  <span className="ml-2 text-xs font-normal text-orange-500">⚠ {sample.warnings}</span>
-                )}
+                {sample.warnings && <span className="ml-2 text-xs font-normal text-orange-500">⚠ {sample.warnings}</span>}
               </span>
               <span className="text-gray-400 text-xs">{forecastOpen ? '▲' : '▼'}</span>
             </button>
@@ -317,9 +477,7 @@ export default function TrainingSamplesPage() {
               <div className="px-5 pb-5 border-t border-gray-50 space-y-3 mt-3">
                 {Object.entries(sample.forecast).map(([key, text]) => (
                   <div key={key}>
-                    <span className="text-xs font-mono font-semibold text-blue-600 uppercase tracking-wide">
-                      {key.replace(/_/g, ' ')}
-                    </span>
+                    <span className="text-xs font-mono font-semibold text-blue-600 uppercase tracking-wide">{key.replace(/_/g, ' ')}</span>
                     <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{text}</p>
                   </div>
                 ))}
@@ -333,7 +491,7 @@ export default function TrainingSamplesPage() {
   );
 }
 
-// ─── Tiny chip helper ─────────────────────────────────────────────────────────
+// ─── Chip ─────────────────────────────────────────────────────────────────────
 
 function Chip({ children, color }: { children: React.ReactNode; color?: 'blue' | 'yellow' | 'red' | 'orange' }) {
   const styles: Record<string, string> = {
@@ -343,9 +501,5 @@ function Chip({ children, color }: { children: React.ReactNode; color?: 'blue' |
     orange: 'bg-orange-50 border-orange-100 text-orange-700',
     default:'bg-white border-gray-200 text-gray-600',
   };
-  return (
-    <span className={`text-xs border rounded-full px-3 py-1 ${styles[color ?? 'default']}`}>
-      {children}
-    </span>
-  );
+  return <span className={`text-xs border rounded-full px-3 py-1 ${styles[color ?? 'default']}`}>{children}</span>;
 }

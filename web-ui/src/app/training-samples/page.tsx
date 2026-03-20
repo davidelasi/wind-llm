@@ -227,14 +227,16 @@ export default function TrainingSamplesPage() {
               </div>
             </div>
 
-            {/* Heatmap grid */}
-            <div className="overflow-x-auto select-none">
+            {/* Heatmap grid — fluid columns, no horizontal scroll */}
+            <div className="select-none" style={{ '--label-w': `${LABEL_W}px` } as React.CSSProperties}>
               {/* Hour labels */}
-              <div className="flex mb-1" style={{ paddingLeft: LABEL_W }}>
+              <div
+                className="mb-1"
+                style={{ display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${HOURS.length}, 1fr)`, gap: 2 }}
+              >
+                <div />
                 {HOURS.map(h => (
-                  <div key={h} className="text-center text-xs text-gray-400 font-mono shrink-0" style={{ width: CELL_W }}>
-                    {h}h
-                  </div>
+                  <div key={h} className="text-center text-xs text-gray-400 font-mono">{h}h</div>
                 ))}
               </div>
 
@@ -242,14 +244,14 @@ export default function TrainingSamplesPage() {
               {samples.map((s, si) => (
                 <div
                   key={si}
-                  className="flex items-center mb-0.5 cursor-pointer group"
+                  className="mb-0.5 cursor-pointer"
+                  style={{ display: 'grid', gridTemplateColumns: `${LABEL_W}px repeat(${HOURS.length}, 1fr)`, gap: 2, alignItems: 'center' }}
                   onClick={() => setSelectedIdx(si)}
                 >
                   {/* Row label */}
                   <div
-                    className="text-xs text-right pr-2 shrink-0 font-mono transition-colors"
+                    className="text-xs text-right pr-2 font-mono transition-colors leading-tight"
                     style={{
-                      width: LABEL_W,
                       color: si === selectedIdx ? '#1d4ed8' : '#9ca3af',
                       fontWeight: si === selectedIdx ? 600 : 400,
                     }}
@@ -266,11 +268,9 @@ export default function TrainingSamplesPage() {
                     return (
                       <div
                         key={hi}
-                        className="shrink-0 rounded-sm transition-opacity"
+                        className="rounded-sm transition-opacity"
                         style={{
-                          width: CELL_W - 2,
                           height: CELL_H,
-                          marginRight: 2,
                           backgroundColor: val !== null ? wspdColor(val) : '#f9fafb',
                           opacity: val === null ? 0.25 : 1,
                           outline: si === selectedIdx ? '2px solid #3b82f6' : '1px solid transparent',
@@ -286,11 +286,6 @@ export default function TrainingSamplesPage() {
                       />
                     );
                   })}
-
-                  {/* Warning dot */}
-                  <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-orange-400 text-xs">
-                    {s.warnings ? '⚠' : ''}
-                  </div>
                 </div>
               ))}
             </div>
@@ -322,7 +317,7 @@ export default function TrainingSamplesPage() {
 
         {/* ── Scatter + Profile row ── */}
         {samples.length > 0 && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Scatter: avg WSPD vs peak GST */}
             <div className="bg-white rounded-lg shadow-sm p-5">

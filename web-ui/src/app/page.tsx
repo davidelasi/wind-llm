@@ -113,6 +113,23 @@ interface DailyWindData {
 }
 
 
+/** Formats raw NWS inner waters forecast text for readable display:
+ *  - Removes leading whitespace before the PZZ header
+ *  - Removes the $$ end-of-bulletin marker
+ *  - Starts a new paragraph at each day/period header (lines beginning with .)
+ *  - Collapses fixed-width hard line breaks so text reflows naturally */
+function formatMarineForecastText(text: string): string {
+  return text
+    .replace(/^[ \t]+(?=PZZ)/m, '')          // strip indent before PZZ line
+    .replace(/\$\$\s*$/, '')                  // remove $$ at end
+    .trim()
+    .replace(/\n(\.[A-Z])/g, '\n\n$1')        // paragraph break before period headers (.TODAY, .FRI NIGHT, etc.)
+    .split(/\n{2,}/)
+    .map(para => para.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(para => para.length > 0)
+    .join('\n\n');
+}
+
 export default function Home() {
   const [windData, setWindData] = useState<WindData | null>(null);
   const [windDataAge, setWindDataAge] = useState<DataAge | null>(null);
@@ -138,6 +155,7 @@ const [llmPrompt, setLlmPrompt] = useState<string | null>(null);
 const [isDummyForecast, setIsDummyForecast] = useState(false);
 const [showLlmPrompt, setShowLlmPrompt] = useState(false);
 const [showDebugSection, setShowDebugSection] = useState(false);
+const [showMarineForecast, setShowMarineForecast] = useState(false);
 const [showAreaForecast, setShowAreaForecast] = useState(false);
 const [showProcessedForecast, setShowProcessedForecast] = useState(false);
 const [showRawDebugJson, setShowRawDebugJson] = useState(false);
@@ -1494,6 +1512,66 @@ ${llmPrompt}
             );
           })()}
 
+
+          {/* ========== MARINE FORECAST ========== */}
+          <div className="mt-6 mx-1">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors duration-150 group"
+              onClick={() => setShowMarineForecast(!showMarineForecast)}
+              aria-expanded={showMarineForecast}
+            >
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-blue-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12 C6 8, 10 8, 12 12 C14 16, 18 16, 21 12" />
+                  <path d="M3 18 C6 14, 10 14, 12 18 C14 22, 18 22, 21 18" />
+                </svg>
+                <span className="text-sm font-semibold text-blue-800">NWS Marine Forecast</span>
+                {forecastData?.issuedTime && (
+                  <span className="text-xs text-blue-500 font-normal hidden sm:inline">
+                    — issued {new Date(forecastData.issuedTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+                  </span>
+                )}
+              </div>
+              {showMarineForecast
+                ? <ChevronUp className="w-4 h-4 text-blue-500 shrink-0" />
+                : <ChevronDown className="w-4 h-4 text-blue-500 shrink-0" />
+              }
+            </button>
+
+            {showMarineForecast && (
+              <div className="mt-1 border border-blue-200 border-t-0 rounded-b-xl bg-white overflow-hidden">
+                {forecastError ? (
+                  <div className="p-4 text-sm text-red-700 flex items-center gap-2">
+                    <span>Unable to load marine forecast.</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); fetchForecastData(); }}
+                      className="underline font-semibold"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : forecastLoading && !forecastData ? (
+                  <div className="p-4 flex items-center gap-2 text-sm text-gray-500">
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0" />
+                    <span>Loading forecast...</span>
+                  </div>
+                ) : forecastData ? (
+                  <div className="p-4">
+                    {forecastData.issuedTime && (
+                      <p className="text-xs text-gray-400 mb-3 sm:hidden">
+                        Issued {new Date(forecastData.issuedTime).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+                      </p>
+                    )}
+                    <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">
+                      {formatMarineForecastText(forecastData.original)}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="p-4 text-sm text-gray-400">No forecast available.</div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* ========== CURRENT CONDITIONS CHART ========== */}
           {todaysGranularData && todaysGranularData.length > 0 && (() => {

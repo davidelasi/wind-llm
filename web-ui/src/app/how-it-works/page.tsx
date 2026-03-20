@@ -1,9 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 
 export default function HowItWorks() {
+  const [isLocalhost, setIsLocalhost] = useState(false);
+  useEffect(() => {
+    const h = window.location.hostname;
+    setIsLocalhost(h === 'localhost' || h === '127.0.0.1');
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Navigation />
@@ -113,6 +119,17 @@ export default function HowItWorks() {
               This technique is called <em>few-shot learning</em>—the model doesn't need retraining; it learns patterns directly from the examples provided in each prompt.
             </p>
           </section>
+
+          {/* Training Samples Explorer link — local only */}
+          {isLocalhost && (
+            <div className="mb-8 p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center space-x-3">
+              <span className="text-2xl">📊</span>
+              <p className="text-base text-gray-700">
+                <a href="/training-samples" className="text-[#005F73] hover:text-[#0A9396] underline font-medium">Explore the training dataset</a>
+                {' '}— browse and visualize the 15 curated few-shot examples loaded into each LLM prompt, grouped by month and forecast number.
+              </p>
+            </div>
+          )}
 
           {/* How Predictions Are Generated */}
           <section className="mb-8">
